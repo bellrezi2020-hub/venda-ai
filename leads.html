@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VendaAI - Leads</title>
+
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Arial,sans-serif;background:#0d1117;color:white;min-height:100vh}
+    header{height:72px;padding:0 6%;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #222}
+    .logo{font-size:27px;font-weight:bold}
+    .logo span{color:#6c63ff}
+    nav{display:flex;gap:12px;flex-wrap:wrap}
+    nav a{color:#bbb;text-decoration:none;padding:10px 14px;border-radius:9px}
+    nav a:hover,nav a.ativo{background:#161b22;color:white}
+    .container{max-width:1100px;margin:auto;padding:50px 25px}
+    h1{font-size:38px;margin-bottom:10px}
+    .sub{color:#999;margin-bottom:30px}
+    .box{background:#161b22;border:1px solid #2b3139;border-radius:18px;padding:28px;margin-bottom:28px}
+    label{display:block;font-weight:bold;margin-bottom:8px}
+    input,textarea,select{width:100%;padding:14px;margin-bottom:18px;background:#0d1117;color:white;border:1px solid #30363d;border-radius:10px;font-size:15px}
+    textarea{min-height:110px}
+    button{padding:14px 18px;background:#6c63ff;color:white;border:none;border-radius:10px;font-weight:bold;cursor:pointer}
+    .full{width:100%}
+    .sec{background:#2b3139}
+    .card{background:#0d1117;border:1px solid #2b3139;border-radius:14px;padding:18px;margin-top:12px;line-height:1.6}
+    .quente{color:#ff6b6b;font-weight:bold}
+    .morno{color:#f0b95a;font-weight:bold}
+    .frio{color:#62a8ff;font-weight:bold}
+    .match{color:#7ee787;font-weight:bold}
+    .topo{display:flex;justify-content:space-between;gap:15px;align-items:center;flex-wrap:wrap}
+    .lead{background:#0d1117;border:1px solid #2b3139;border-radius:14px;padding:18px;margin-top:14px}
+    .lead p{color:#bbb;margin-top:7px}
+    .data{color:#777;font-size:13px}
+    .vazio{text-align:center;color:#777;padding:25px}
+    #resultado{display:none}
+    @media(max-width:800px){header{height:auto;padding:18px;flex-direction:column;gap:15px}h1{font-size:31px}}
+  </style>
+</head>
+
+<body>
+
+<header>
+  <div class="logo">Venda<span>AI</span></div>
+
+  <nav>
+    <a href="index.html">Dashboard</a>
+    <a href="empresa.html">Empresa</a>
+    <a href="imoveis.html">Imóveis</a>
+    <a href="leads.html" class="ativo">Leads</a>
+  </nav>
+</header>
+
+<div class="container">
+
+  <h1>Leads</h1>
+  <p class="sub">Analise clientes e encontre imóveis compatíveis.</p>
+
+  <div class="box">
+
+    <label>Nome do cliente</label>
+    <input id="nome" placeholder="Ex: João">
+
+    <label>Mensagem do cliente</label>
+    <textarea id="mensagem" placeholder="Ex: Procuro uma casa de até R$ 500 mil..."></textarea>
+
+    <button id="botao" class="full" onclick="analisar()">
+      🤖 Analisar cliente
+    </button>
+
+    <div id="resultado"></div>
+
+  </div>
+
+
+  <div class="box">
+
+    <div class="topo">
+      <h2>📋 Histórico de leads</h2>
+
+      <div>
+        <select id="filtro" onchange="mostrarHistorico()" style="width:auto;margin:0;">
+          <option value="Todos">Todos</option>
+          <option value="Quente">🔥 Quentes</option>
+          <option value="Morno">🟡 Mornos</option>
+          <option value="Frio">❄️ Frios</option>
+        </select>
+
+        <button class="sec" onclick="limparHistorico()">
+          Limpar
+        </button>
+      </div>
+    </div>
+
+    <div id="historico"></div>
+
+  </div>
+
+</div>
+
+<script>
+let empresa =
+  JSON.parse(localStorage.getItem("vendaAIEmpresa")) || {};
+
+let imoveis =
+  JSON.parse(localStorage.getItem("vendaAIImoveis")) || [];
+
+let leads =
+  JSON.parse(localStorage.getItem("vendaAILeads")) || [];
+
+async function analisar() {
+  const nome =
+    document.getElementById("nome").value.trim() || "Cliente";
+
+  const mensagem =
+    document.getElementById("mensagem").value.trim();
+
+  const resultado =
+    document.getElementById("resultado");
+
+  const botao =
+    document.getElementById("botao");
+
+  if (!mensagem) {
+    alert("Digite a mensagem do cliente.");
+    return;
+  }
+
+  resultado.style.display = "block";
+  resultado.innerHTML = `<div class="card">🤖 Analisando cliente...</div>`;
+
+  botao.disabled = true;
+  botao.textContent = "Analisando...";
+
+  try {
+    const resposta = await fetch("/api/analisar", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        nome,
+        mensagem,
+        empresa,
+        imoveis
+      })
+    });
+
+    const dados = await resposta.json();
+
+    if (!resposta.ok) {
+      throw new Error(dados.erro || "Erro ao analisar.");
+    }
+
+    const classe = normalizar(dados.status);
+
+    let matches = "";
+
+    if (dados.imoveisCompativeis?.length) {
+      matches = `
+        <div class="card">
+          <strong>🏠 Imóveis compatíveis</strong>
+
+          ${dados.imoveisCompativeis.map(i => `
+            <div style="margin-top:12px;padding-top:12px;border-top:1px solid #222;">
+              <div class="match">${esc(i.titulo)}</div>
+              <div>${esc(i.motivo)}</div>
+            </div>
+          `).join("")}
+        </div>
+      `;
+    }
+
+    resultado.innerHTML = `
+      <div class="card">
+        <strong>🔥 Temperatura do lead</strong>
+        <div class="${classe}">${esc(dados.status)}</div>
+      </div>
+
+      <div class="card">
+        <strong>🎯 Intenção</strong>
+        ${esc(dados.intencao)}
+      </div>
+
+      ${matches}
+
+      <div class="card">
+        <strong>💬 Resposta sugerida</strong>
+        ${esc(dados.resposta)}
+      </div>
+
+      <div class="card">
+        <strong>➡️ Próximo passo</strong>
+        ${esc(dados.proximoPasso)}
+      </div>
+    `;
+
+    leads.unshift({
+      id: Date.now(),
+      nome,
+      mensagem,
+      status: dados.status,
+      intencao: dados.intencao,
+      resposta: dados.resposta,
+      proximoPasso: dados.proximoPasso,
+      temMatch: dados.imoveisCompativeis?.length > 0,
+      data: new Date().toLocaleString("pt-BR")
+    });
+
+    localStorage.setItem("vendaAILeads", JSON.stringify(leads));
+
+    mostrarHistorico();
+
+  } catch (e) {
+    resultado.innerHTML = `
+      <div class="card">
+        ❌ ${esc(e.message)}
+      </div>
+    `;
+  }
+
+  botao.disabled = false;
+  botao.textContent = "🤖 Analisar cliente";
+}
+
+function mostrarHistorico() {
+  const area = document.getElementById("historico");
+  const filtro = document.getElementById("filtro").value;
+
+  let lista = leads;
+
+  if (filtro !== "Todos") {
+    lista = leads.filter(l =>
+      String(l.status || "")
+        .toLowerCase()
+        .includes(filtro.toLowerCase())
+    );
+  }
+
+  if (!lista.length) {
+    area.innerHTML = `<div class="vazio">Nenhum lead salvo.</div>`;
+    return;
+  }
+
+  area.innerHTML = lista.map(l => `
+    <div class="lead">
+
+      <div class="topo">
+        <div>
+          <strong>${esc(l.nome)}</strong>
+          <div class="${normalizar(l.status)}">${esc(l.status)}</div>
+        </div>
+
+        <div class="data">${esc(l.data)}</div>
+      </div>
+
+      <p><strong>Mensagem:</strong> ${esc(l.mensagem)}</p>
+      <p><strong>🎯 Intenção:</strong> ${esc(l.intencao)}</p>
+      <p><strong>💬 Resposta:</strong> ${esc(l.resposta)}</p>
+      <p><strong>➡️ Próximo passo:</strong> ${esc(l.proximoPasso)}</p>
+
+    </div>
+  `).join("");
+}
+
+function limparHistorico() {
+  if (!confirm("Apagar todo o histórico?")) return;
+
+  leads = [];
+  localStorage.removeItem("vendaAILeads");
+  mostrarHistorico();
+}
+
+function normalizar(t) {
+  return String(t || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function esc(t) {
+  const d = document.createElement("div");
+  d.textContent = t || "";
+  return d.innerHTML;
+}
+
+mostrarHistorico();
+</script>
+
+</body>
+</html>
