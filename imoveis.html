@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VendaAI - Imóveis</title>
+
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Arial,sans-serif;background:#0d1117;color:white;min-height:100vh}
+    header{height:72px;padding:0 6%;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #222}
+    .logo{font-size:27px;font-weight:bold}
+    .logo span{color:#6c63ff}
+    nav{display:flex;gap:12px;flex-wrap:wrap}
+    nav a{color:#bbb;text-decoration:none;padding:10px 14px;border-radius:9px}
+    nav a:hover,nav a.ativo{background:#161b22;color:white}
+    .container{max-width:1100px;margin:auto;padding:50px 25px}
+    h1{font-size:38px;margin-bottom:10px}
+    .sub{color:#999;margin-bottom:30px}
+    .box{background:#161b22;border:1px solid #2b3139;border-radius:18px;padding:28px;margin-bottom:28px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}
+    label{display:block;font-weight:bold;margin-bottom:8px}
+    input,select,textarea{width:100%;padding:13px;margin-bottom:17px;background:#0d1117;color:white;border:1px solid #30363d;border-radius:10px;font-size:15px}
+    textarea{min-height:100px}
+    button{padding:13px 18px;background:#6c63ff;color:white;border:none;border-radius:10px;font-weight:bold;cursor:pointer}
+    .full{width:100%}
+    .danger{background:#512b2b}
+    .imovel{background:#0d1117;border:1px solid #2b3139;border-radius:14px;padding:18px;margin-bottom:14px}
+    .topo{display:flex;justify-content:space-between;gap:20px}
+    .preco{color:#7ee787;font-weight:bold;font-size:18px;margin-top:6px}
+    .imovel p{color:#bbb;margin-top:7px}
+    .vazio{text-align:center;color:#777;padding:25px}
+    @media(max-width:800px){header{height:auto;padding:18px;flex-direction:column;gap:15px}.grid{grid-template-columns:1fr}h1{font-size:31px}}
+  </style>
+</head>
+
+<body>
+
+<header>
+  <div class="logo">Venda<span>AI</span></div>
+
+  <nav>
+    <a href="index.html">Dashboard</a>
+    <a href="empresa.html">Empresa</a>
+    <a href="imoveis.html" class="ativo">Imóveis</a>
+    <a href="leads.html">Leads</a>
+  </nav>
+</header>
+
+<div class="container">
+
+  <h1>Imóveis</h1>
+  <p class="sub">Cadastre os imóveis que a IA poderá oferecer aos clientes.</p>
+
+  <div class="box">
+
+    <div class="grid">
+
+      <div>
+        <label>Título</label>
+        <input id="titulo" placeholder="Ex: Casa 3 quartos no Menino Deus">
+      </div>
+
+      <div>
+        <label>Tipo</label>
+        <select id="tipo">
+          <option>Casa</option>
+          <option>Apartamento</option>
+          <option>Terreno</option>
+          <option>Comercial</option>
+        </select>
+      </div>
+
+      <div>
+        <label>Finalidade</label>
+        <select id="finalidade">
+          <option>Compra</option>
+          <option>Aluguel</option>
+        </select>
+      </div>
+
+      <div>
+        <label>Preço</label>
+        <input id="preco" type="number" placeholder="500000">
+      </div>
+
+      <div>
+        <label>Bairro</label>
+        <input id="bairro" placeholder="Ex: Menino Deus">
+      </div>
+
+      <div>
+        <label>Cidade</label>
+        <input id="cidade" placeholder="Ex: Porto Alegre">
+      </div>
+
+      <div>
+        <label>Quartos</label>
+        <input id="quartos" type="number" placeholder="3">
+      </div>
+
+      <div>
+        <label>Garagem</label>
+        <select id="garagem">
+          <option>Sim</option>
+          <option>Não</option>
+        </select>
+      </div>
+
+    </div>
+
+    <label>Descrição</label>
+    <textarea id="descricao" placeholder="Ex: Casa com pátio, churrasqueira..."></textarea>
+
+    <button class="full" onclick="adicionar()">➕ Adicionar imóvel</button>
+  </div>
+
+  <div class="box">
+
+    <div class="topo" style="margin-bottom:20px;">
+      <h2>Catálogo</h2>
+
+      <button class="danger" onclick="limparTudo()">
+        Limpar catálogo
+      </button>
+    </div>
+
+    <div id="catalogo"></div>
+
+  </div>
+
+</div>
+
+<script>
+let imoveis =
+  JSON.parse(localStorage.getItem("vendaAIImoveis")) || [];
+
+function adicionar() {
+  const titulo = document.getElementById("titulo").value.trim();
+  const preco = document.getElementById("preco").value;
+
+  if (!titulo || !preco) {
+    alert("Preencha pelo menos o título e o preço.");
+    return;
+  }
+
+  imoveis.unshift({
+    id: Date.now(),
+    titulo,
+    tipo: document.getElementById("tipo").value,
+    finalidade: document.getElementById("finalidade").value,
+    preco: Number(preco),
+    bairro: document.getElementById("bairro").value.trim(),
+    cidade: document.getElementById("cidade").value.trim(),
+    quartos: Number(document.getElementById("quartos").value || 0),
+    garagem: document.getElementById("garagem").value,
+    descricao: document.getElementById("descricao").value.trim()
+  });
+
+  localStorage.setItem("vendaAIImoveis", JSON.stringify(imoveis));
+
+  document.getElementById("titulo").value = "";
+  document.getElementById("preco").value = "";
+  document.getElementById("bairro").value = "";
+  document.getElementById("cidade").value = "";
+  document.getElementById("quartos").value = "";
+  document.getElementById("descricao").value = "";
+
+  mostrar();
+}
+
+function mostrar() {
+  const area = document.getElementById("catalogo");
+
+  if (!imoveis.length) {
+    area.innerHTML = `<div class="vazio">Nenhum imóvel cadastrado.</div>`;
+    return;
+  }
+
+  area.innerHTML = imoveis.map(i => `
+    <div class="imovel">
+
+      <div class="topo">
+        <div>
+          <h3>${esc(i.titulo)}</h3>
+          <div class="preco">${dinheiro(i.preco)}</div>
+        </div>
+
+        <button class="danger" onclick="excluir(${i.id})">
+          Excluir
+        </button>
+      </div>
+
+      <p><strong>Tipo:</strong> ${esc(i.tipo)}</p>
+      <p><strong>Finalidade:</strong> ${esc(i.finalidade)}</p>
+      <p><strong>Local:</strong> ${esc(i.bairro)} ${i.bairro && i.cidade ? " - " : ""}${esc(i.cidade)}</p>
+      <p><strong>Quartos:</strong> ${i.quartos || "Não informado"}</p>
+      <p><strong>Garagem:</strong> ${esc(i.garagem)}</p>
+      <p>${esc(i.descricao)}</p>
+
+    </div>
+  `).join("");
+}
+
+function excluir(id) {
+  imoveis = imoveis.filter(i => i.id !== id);
+  localStorage.setItem("vendaAIImoveis", JSON.stringify(imoveis));
+  mostrar();
+}
+
+function limparTudo() {
+  if (!confirm("Apagar todos os imóveis?")) return;
+
+  imoveis = [];
+  localStorage.removeItem("vendaAIImoveis");
+  mostrar();
+}
+
+function dinheiro(v) {
+  return Number(v).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL"
+  });
+}
+
+function esc(t) {
+  const d = document.createElement("div");
+  d.textContent = t || "";
+  return d.innerHTML;
+}
+
+mostrar();
+</script>
+
+</body>
+</html>
