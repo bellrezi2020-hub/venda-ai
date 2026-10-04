@@ -40,12 +40,12 @@
     .container {
       max-width: 1150px;
       margin: auto;
-      padding: 60px 25px;
+      padding: 50px 25px;
     }
 
     .titulo {
       text-align: center;
-      margin-bottom: 40px;
+      margin-bottom: 35px;
     }
 
     .titulo h1 {
@@ -93,6 +93,10 @@
       margin-bottom: 30px;
     }
 
+    .box h2 {
+      margin-bottom: 20px;
+    }
+
     label {
       display: block;
       margin-bottom: 8px;
@@ -113,7 +117,7 @@
     }
 
     textarea {
-      min-height: 110px;
+      min-height: 100px;
       resize: vertical;
     }
 
@@ -139,6 +143,19 @@
 
     .botao-principal {
       width: 100%;
+    }
+
+    .botao-secundario {
+      background: #2b3139;
+    }
+
+    .empresa-salva {
+      margin-top: 15px;
+      padding: 14px;
+      border-radius: 10px;
+      background: #0d1117;
+      color: #68d391;
+      display: none;
     }
 
     #resultado {
@@ -189,10 +206,6 @@
       margin: 0;
     }
 
-    .limpar {
-      background: #2b3139;
-    }
-
     .lead {
       background: #0d1117;
       border: 1px solid #2b3139;
@@ -232,7 +245,6 @@
     }
 
     @media(max-width: 800px) {
-
       .dashboard {
         grid-template-columns: repeat(2, 1fr);
       }
@@ -240,15 +252,18 @@
       .titulo h1 {
         font-size: 35px;
       }
-    }
 
+      header {
+        flex-direction: column;
+        gap: 10px;
+      }
+    }
   </style>
 </head>
 
 <body>
 
 <header>
-
   <div class="logo">
     Venda<span>AI</span>
   </div>
@@ -256,24 +271,21 @@
   <div>
     Inteligência artificial para vendas
   </div>
-
 </header>
 
 
 <div class="container">
 
   <div class="titulo">
-
     <h1>
       Transforme leads em
       <span>clientes</span>
     </h1>
 
     <p>
-      Analise mensagens, descubra a intenção do cliente
-      e saiba qual deve ser o próximo passo.
+      Analise mensagens, entenda a intenção do cliente
+      e responda usando informações reais da sua empresa.
     </p>
-
   </div>
 
 
@@ -303,6 +315,96 @@
 
 
   <div class="box">
+
+    <h2>
+      ⚙️ Configurações da empresa
+    </h2>
+
+    <label>
+      Nome da empresa
+    </label>
+
+    <input
+      id="empresaNome"
+      type="text"
+      placeholder="Ex: Imobiliária Prime"
+    >
+
+
+    <label>
+      Cidade / região atendida
+    </label>
+
+    <input
+      id="empresaRegiao"
+      type="text"
+      placeholder="Ex: Porto Alegre e região metropolitana"
+    >
+
+
+    <label>
+      Produtos ou serviços
+    </label>
+
+    <textarea
+      id="empresaServicos"
+      placeholder="Ex: Casas, apartamentos, terrenos, imóveis para aluguel e venda"
+    ></textarea>
+
+
+    <label>
+      Faixa de preços
+    </label>
+
+    <input
+      id="empresaPrecos"
+      type="text"
+      placeholder="Ex: Imóveis de R$ 200 mil a R$ 2 milhões"
+    >
+
+
+    <label>
+      Diferenciais da empresa
+    </label>
+
+    <textarea
+      id="empresaDiferenciais"
+      placeholder="Ex: Atendimento rápido, financiamento, imóveis exclusivos..."
+    ></textarea>
+
+
+    <label>
+      Observações importantes
+    </label>
+
+    <textarea
+      id="empresaObservacoes"
+      placeholder="Ex: Não atendemos imóveis rurais. Visitas de segunda a sábado."
+    ></textarea>
+
+
+    <button
+      class="botao-principal"
+      onclick="salvarEmpresa()"
+    >
+      💾 Salvar informações da empresa
+    </button>
+
+    <div
+      id="empresaSalva"
+      class="empresa-salva"
+    >
+      ✅ Informações da empresa salvas.
+    </div>
+
+  </div>
+
+
+  <div class="box">
+
+    <h2>
+      🤖 Analisar novo lead
+    </h2>
 
     <label>
       Tipo de negócio
@@ -386,7 +488,7 @@
         </select>
 
         <button
-          class="limpar"
+          class="botao-secundario"
           onclick="limparHistorico()"
         >
           Limpar
@@ -395,7 +497,6 @@
       </div>
 
     </div>
-
 
     <div id="historico"></div>
 
@@ -413,6 +514,75 @@
 
 let leads =
   JSON.parse(localStorage.getItem("vendaAILeads")) || [];
+
+
+let empresa =
+  JSON.parse(localStorage.getItem("vendaAIEmpresa")) || {};
+
+
+function salvarEmpresa() {
+
+  empresa = {
+    nome:
+      document.getElementById("empresaNome").value.trim(),
+
+    regiao:
+      document.getElementById("empresaRegiao").value.trim(),
+
+    servicos:
+      document.getElementById("empresaServicos").value.trim(),
+
+    precos:
+      document.getElementById("empresaPrecos").value.trim(),
+
+    diferenciais:
+      document.getElementById("empresaDiferenciais").value.trim(),
+
+    observacoes:
+      document.getElementById("empresaObservacoes").value.trim()
+  };
+
+
+  localStorage.setItem(
+    "vendaAIEmpresa",
+    JSON.stringify(empresa)
+  );
+
+
+  const aviso =
+    document.getElementById("empresaSalva");
+
+  aviso.style.display = "block";
+
+  setTimeout(() => {
+    aviso.style.display = "none";
+  }, 2500);
+}
+
+
+
+function carregarEmpresa() {
+
+  document.getElementById("empresaNome").value =
+    empresa.nome || "";
+
+  document.getElementById("empresaRegiao").value =
+    empresa.regiao || "";
+
+  document.getElementById("empresaServicos").value =
+    empresa.servicos || "";
+
+  document.getElementById("empresaPrecos").value =
+    empresa.precos || "";
+
+  document.getElementById("empresaDiferenciais").value =
+    empresa.diferenciais || "";
+
+  document.getElementById("empresaObservacoes").value =
+    empresa.observacoes || "";
+
+}
+
 
 
 async function analisarLead() {
@@ -471,7 +641,8 @@ async function analisarLead() {
         body: JSON.stringify({
           nome,
           mensagem,
-          negocio
+          negocio,
+          empresa
         })
 
       });
@@ -492,10 +663,7 @@ async function analisarLead() {
 
 
     const classeStatus =
-      dados.status
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "");
+      normalizarStatus(dados.status);
 
 
     resultado.innerHTML = `
@@ -609,7 +777,16 @@ function salvarLead(lead) {
   atualizarDashboard();
 
   mostrarHistorico();
+}
 
+
+
+function normalizarStatus(status) {
+
+  return (status || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
 }
 
 
@@ -642,13 +819,9 @@ function mostrarHistorico() {
   if (lista.length === 0) {
 
     area.innerHTML = `
-
       <div class="vazio">
-
         Nenhum lead salvo ainda.
-
       </div>
-
     `;
 
     return;
@@ -659,10 +832,7 @@ function mostrarHistorico() {
     lista.map(lead => {
 
       const classe =
-        lead.status
-          .toLowerCase()
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "");
+        normalizarStatus(lead.status);
 
 
       return `
@@ -709,6 +879,12 @@ function mostrarHistorico() {
 
 
           <p>
+            <strong>💬 Resposta:</strong>
+            ${escaparHTML(lead.resposta)}
+          </p>
+
+
+          <p>
             <strong>➡️ Próximo passo:</strong>
             ${escaparHTML(lead.proximoPasso)}
           </p>
@@ -725,13 +901,11 @@ function mostrarHistorico() {
 
 function atualizarDashboard() {
 
-  document.getElementById("total")
-    .textContent =
+  document.getElementById("total").textContent =
     leads.length;
 
 
-  document.getElementById("quentes")
-    .textContent =
+  document.getElementById("quentes").textContent =
     leads.filter(
       l =>
         l.status.toLowerCase()
@@ -739,8 +913,7 @@ function atualizarDashboard() {
     ).length;
 
 
-  document.getElementById("mornos")
-    .textContent =
+  document.getElementById("mornos").textContent =
     leads.filter(
       l =>
         l.status.toLowerCase()
@@ -748,14 +921,12 @@ function atualizarDashboard() {
     ).length;
 
 
-  document.getElementById("frios")
-    .textContent =
+  document.getElementById("frios").textContent =
     leads.filter(
       l =>
         l.status.toLowerCase()
           .includes("frio")
     ).length;
-
 }
 
 
@@ -780,7 +951,6 @@ function limparHistorico() {
   atualizarDashboard();
 
   mostrarHistorico();
-
 }
 
 
@@ -794,9 +964,11 @@ function escaparHTML(texto) {
     texto || "";
 
   return div.innerHTML;
-
 }
 
+
+
+carregarEmpresa();
 
 atualizarDashboard();
 
