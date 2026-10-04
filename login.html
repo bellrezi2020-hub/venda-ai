@@ -1,0 +1,32 @@
+<!doctype html><html lang="pt-BR"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VendaAI - Entrar</title><link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js"></script><script src="app.js"></script>
+</head><body>
+<div class="container" style="max-width:560px;padding-top:90px">
+  <div class="logo" style="margin-bottom:24px">Venda<span>AI</span></div>
+  <div class="box">
+    <h1 style="font-size:30px">Entrar</h1><p class="sub">Acesse sua conta da imobiliária.</p>
+    <label>E-mail</label><input id="email" type="email" placeholder="voce@email.com">
+    <label>Senha</label><input id="senha" type="password" placeholder="••••••••">
+    <button class="btn-full" onclick="entrar()">Entrar</button>
+    <div class="divider"></div>
+    <button class="btn-full btn-secondary" onclick="criar()">Criar conta</button>
+    <p id="msg" class="muted small" style="margin-top:14px"></p>
+  </div>
+</div>
+<script>
+if(!supabaseClient) document.getElementById("msg").textContent="Configure o Supabase em config.js antes de usar o login.";
+async function entrar(){
+  const email=document.getElementById("email").value.trim(), password=document.getElementById("senha").value;
+  const {error}=await supabaseClient.auth.signInWithPassword({email,password});
+  if(error){document.getElementById("msg").textContent=error.message;return}
+  location.href="index.html";
+}
+async function criar(){
+  const email=document.getElementById("email").value.trim(), password=document.getElementById("senha").value;
+  const {data,error}=await supabaseClient.auth.signUp({email,password});
+  if(error){document.getElementById("msg").textContent=error.message;return}
+  document.getElementById("msg").textContent="Conta criada. Se o Supabase exigir confirmação, confira seu e-mail.";
+}
+</script></body></html>

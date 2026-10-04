@@ -1,104 +1,29 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>VendaAI - Empresa</title>
-
-  <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:Arial,sans-serif;background:#0d1117;color:white;min-height:100vh}
-    header{height:72px;padding:0 6%;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #222}
-    .logo{font-size:27px;font-weight:bold}
-    .logo span{color:#6c63ff}
-    nav{display:flex;gap:12px;flex-wrap:wrap}
-    nav a{color:#bbb;text-decoration:none;padding:10px 14px;border-radius:9px}
-    nav a:hover,nav a.ativo{background:#161b22;color:white}
-    .container{max-width:900px;margin:auto;padding:50px 25px}
-    h1{font-size:38px;margin-bottom:10px}
-    .sub{color:#999;margin-bottom:30px}
-    .box{background:#161b22;border:1px solid #2b3139;border-radius:18px;padding:28px}
-    label{display:block;font-weight:bold;margin-bottom:8px}
-    input,textarea{width:100%;padding:14px;margin-bottom:18px;background:#0d1117;color:white;border:1px solid #30363d;border-radius:10px;font-size:15px}
-    textarea{min-height:110px;resize:vertical}
-    button{width:100%;padding:15px;background:#6c63ff;color:white;border:none;border-radius:10px;font-size:16px;font-weight:bold;cursor:pointer}
-    .ok{display:none;margin-top:15px;padding:14px;background:#0d1117;border-radius:10px;color:#68d391}
-    @media(max-width:800px){header{height:auto;padding:18px;flex-direction:column;gap:15px}h1{font-size:31px}}
-  </style>
-</head>
-
-<body>
-
-<header>
-  <div class="logo">Venda<span>AI</span></div>
-
-  <nav>
-    <a href="index.html">Dashboard</a>
-    <a href="empresa.html" class="ativo">Empresa</a>
-    <a href="imoveis.html">Imóveis</a>
-    <a href="leads.html">Leads</a>
-  </nav>
-</header>
-
-<div class="container">
-
-  <h1>Configurações da empresa</h1>
-  <p class="sub">Essas informações serão usadas pela IA nas respostas.</p>
-
-  <div class="box">
-
-    <label>Nome da imobiliária</label>
-    <input id="empresaNome" placeholder="Ex: Imobiliária Prime">
-
-    <label>Região atendida</label>
-    <input id="empresaRegiao" placeholder="Ex: Porto Alegre e região metropolitana">
-
-    <label>Diferenciais</label>
-    <textarea id="empresaDiferenciais" placeholder="Ex: Financiamento, atendimento personalizado..."></textarea>
-
-    <label>Observações</label>
-    <textarea id="empresaObservacoes" placeholder="Ex: Atendimento de segunda a sábado."></textarea>
-
-    <button onclick="salvarEmpresa()">💾 Salvar informações</button>
-
-    <div id="ok" class="ok">
-      ✅ Informações salvas com sucesso.
-    </div>
-
-  </div>
-</div>
-
+<!doctype html><html lang="pt-BR"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VendaAI - Empresa</title><link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js"></script><script src="app.js"></script>
+</head><body><div id="nav"></div>
+<div class="container"><h1>Empresa</h1><p class="sub">Informações que a IA usa nas respostas.</p>
+<div class="box">
+<label>Nome da imobiliária</label><input id="nome">
+<label>Região atendida</label><input id="regiao">
+<label>Diferenciais</label><textarea id="diferenciais"></textarea>
+<label>Observações</label><textarea id="observacoes"></textarea>
+<button class="btn-full" onclick="salvar()">💾 Salvar informações</button>
+<p id="msg" class="success small" style="margin-top:12px"></p>
+</div></div>
 <script>
-let empresa =
-  JSON.parse(localStorage.getItem("vendaAIEmpresa")) || {};
-
-function carregar() {
-  document.getElementById("empresaNome").value = empresa.nome || "";
-  document.getElementById("empresaRegiao").value = empresa.regiao || "";
-  document.getElementById("empresaDiferenciais").value = empresa.diferenciais || "";
-  document.getElementById("empresaObservacoes").value = empresa.observacoes || "";
+document.getElementById("nav").innerHTML=nav("empresa");
+let user;
+(async()=>{
+ user=await requireAuth(); if(!user)return;
+ const c=await currentCompany();
+ if(c){nome.value=c.name||"";regiao.value=c.region||"";diferenciais.value=c.differentials||"";observacoes.value=c.notes||""}
+})();
+async function salvar(){
+ const payload={owner_id:user.id,name:nome.value.trim(),region:regiao.value.trim(),differentials:diferenciais.value.trim(),notes:observacoes.value.trim()};
+ const existing=await currentCompany();
+ let q=existing?supabaseClient.from("companies").update(payload).eq("id",existing.id):supabaseClient.from("companies").insert(payload);
+ const {error}=await q;if(error){msg.textContent=error.message;return}msg.textContent="✅ Informações salvas.";
 }
-
-function salvarEmpresa() {
-  empresa = {
-    nome: document.getElementById("empresaNome").value.trim(),
-    regiao: document.getElementById("empresaRegiao").value.trim(),
-    diferenciais: document.getElementById("empresaDiferenciais").value.trim(),
-    observacoes: document.getElementById("empresaObservacoes").value.trim()
-  };
-
-  localStorage.setItem("vendaAIEmpresa", JSON.stringify(empresa));
-
-  const ok = document.getElementById("ok");
-  ok.style.display = "block";
-
-  setTimeout(() => {
-    ok.style.display = "none";
-  }, 2000);
-}
-
-carregar();
-</script>
-
-</body>
-</html>
+</script></body></html>

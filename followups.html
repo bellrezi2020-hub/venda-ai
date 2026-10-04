@@ -1,0 +1,22 @@
+<!doctype html><html lang="pt-BR"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VendaAI - Follow-ups</title><link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js"></script><script src="app.js"></script>
+</head><body><div id="nav"></div><div class="container">
+<h1>Follow-ups</h1><p class="sub">Sugestões de retomada para leads parados.</p>
+<div class="box"><button class="btn-full" onclick="gerar()">✨ Gerar sugestões agora</button></div><div id="lista"></div>
+</div>
+<script>
+document.getElementById("nav").innerHTML=nav("followups");let company;
+(async()=>{await requireAuth();company=await currentCompany();})();
+async function gerar(){
+ const {data:leads}=await supabaseClient.from("leads").select("*").eq("company_id",company.id).in("status",["Novo","Em contato"]).order("created_at",{ascending:true});
+ if(!leads?.length){lista.innerHTML='<div class="box muted">Nenhum lead pendente.</div>';return}
+ lista.innerHTML=leads.map(l=>`<div class="box"><div class="row"><div><h3>${esc(l.name)}</h3><div class="${normalizar(l.temperature)}">${esc(l.temperature)}</div></div><a class="btn btn-secondary" href="lead.html?id=${l.id}">Abrir lead</a></div><p class="muted" style="margin-top:8px">${esc(l.next_step||"")}</p><button style="margin-top:12px" onclick="criar('${l.id}')">Gerar mensagem de follow-up</button><div id="f_${l.id}"></div></div>`).join("");
+}
+async function criar(id){
+ const lead=(await supabaseClient.from("leads").select("*").eq("id",id).single()).data;
+ const r=await fetch("/api/followup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({lead,empresa:company})});const d=await r.json();
+ document.getElementById("f_"+id).innerHTML=`<div class="list-item">${esc(d.resposta||d.erro)}</div>`;
+}
+</script></body></html>
