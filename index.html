@@ -1,1470 +1,253 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VendaAI - Dashboard</title>
 
-<title>VendaAI Imóveis</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
-<style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0d1117;
+      color: white;
+      min-height: 100vh;
+    }
 
-*{
-  box-sizing:border-box;
-  margin:0;
-  padding:0;
-}
+    header {
+      height: 72px;
+      padding: 0 6%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #222;
+      background: #0d1117;
+    }
 
-body{
-  font-family:Arial,sans-serif;
-  background:#0d1117;
-  color:white;
-  min-height:100vh;
-}
+    .logo {
+      font-size: 27px;
+      font-weight: bold;
+    }
 
-header{
-  padding:22px 6%;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  border-bottom:1px solid #222;
-}
+    .logo span {
+      color: #6c63ff;
+    }
 
-.logo{
-  font-size:28px;
-  font-weight:bold;
-}
+    nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
 
-.logo span{
-  color:#6c63ff;
-}
+    nav a {
+      color: #bbb;
+      text-decoration: none;
+      padding: 10px 14px;
+      border-radius: 9px;
+    }
 
-.container{
-  max-width:1200px;
-  margin:auto;
-  padding:45px 25px;
-}
+    nav a:hover,
+    nav a.ativo {
+      background: #161b22;
+      color: white;
+    }
 
-.hero{
-  text-align:center;
-  margin-bottom:35px;
-}
+    .container {
+      max-width: 1150px;
+      margin: auto;
+      padding: 50px 25px;
+    }
 
-.hero h1{
-  font-size:44px;
-  margin-bottom:12px;
-}
+    .titulo {
+      margin-bottom: 35px;
+    }
 
-.hero h1 span{
-  color:#6c63ff;
-}
+    .titulo h1 {
+      font-size: 40px;
+      margin-bottom: 10px;
+    }
 
-.hero p{
-  color:#999;
-  font-size:18px;
-}
+    .titulo p {
+      color: #999;
+      font-size: 17px;
+    }
 
-.dashboard{
-  display:grid;
-  grid-template-columns:repeat(4,1fr);
-  gap:15px;
-  margin-bottom:30px;
-}
+    .dashboard {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+      margin-bottom: 35px;
+    }
 
-.numero-card{
-  background:#161b22;
-  border:1px solid #2b3139;
-  border-radius:15px;
-  padding:20px;
-}
+    .card {
+      background: #161b22;
+      border: 1px solid #2b3139;
+      border-radius: 16px;
+      padding: 22px;
+    }
 
-.numero-card p{
-  color:#999;
-  margin-bottom:8px;
-}
+    .card p {
+      color: #999;
+      margin-bottom: 10px;
+    }
 
-.numero-card strong{
-  font-size:28px;
-}
+    .card strong {
+      font-size: 30px;
+    }
 
-.box{
-  background:#161b22;
-  border:1px solid #2b3139;
-  border-radius:18px;
-  padding:28px;
-  margin-bottom:28px;
-}
+    .atalhos {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+    }
 
-.box h2{
-  margin-bottom:20px;
-}
+    .atalho {
+      background: #161b22;
+      border: 1px solid #2b3139;
+      border-radius: 16px;
+      padding: 25px;
+      text-decoration: none;
+      color: white;
+      transition: .2s;
+    }
 
-.grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:16px;
-}
+    .atalho:hover {
+      transform: translateY(-2px);
+      border-color: #6c63ff;
+    }
 
-label{
-  display:block;
-  font-weight:bold;
-  margin-bottom:7px;
-}
+    .atalho h3 {
+      margin-bottom: 10px;
+      font-size: 20px;
+    }
 
-input,
-select,
-textarea{
-  width:100%;
-  padding:13px;
-  margin-bottom:17px;
-  background:#0d1117;
-  color:white;
-  border:1px solid #30363d;
-  border-radius:10px;
-  font-size:15px;
-}
+    .atalho p {
+      color: #999;
+      line-height: 1.5;
+    }
 
-textarea{
-  min-height:100px;
-  resize:vertical;
-}
+    @media(max-width:800px) {
+      header {
+        height: auto;
+        padding: 18px;
+        flex-direction: column;
+        gap: 15px;
+      }
 
-button{
-  padding:14px 18px;
-  border:none;
-  border-radius:10px;
-  background:#6c63ff;
-  color:white;
-  font-weight:bold;
-  font-size:15px;
-  cursor:pointer;
-}
+      .dashboard {
+        grid-template-columns: repeat(2, 1fr);
+      }
 
-button:hover{
-  opacity:.9;
-}
+      .atalhos {
+        grid-template-columns: 1fr;
+      }
 
-button:disabled{
-  opacity:.6;
-}
-
-.botao-cheio{
-  width:100%;
-}
-
-.botao-secundario{
-  background:#2b3139;
-}
-
-.botao-perigo{
-  background:#512b2b;
-}
-
-.aviso{
-  margin-top:15px;
-  background:#0d1117;
-  padding:13px;
-  border-radius:9px;
-  color:#68d391;
-  display:none;
-}
-
-.imovel{
-  background:#0d1117;
-  border:1px solid #2b3139;
-  padding:18px;
-  border-radius:14px;
-  margin-bottom:12px;
-}
-
-.imovel-topo{
-  display:flex;
-  justify-content:space-between;
-  gap:20px;
-  align-items:start;
-}
-
-.imovel h3{
-  margin-bottom:8px;
-}
-
-.imovel p{
-  margin-top:7px;
-  color:#bbb;
-}
-
-.preco{
-  color:#7ee787;
-  font-weight:bold;
-  font-size:18px;
-}
-
-#resultado{
-  display:none;
-  margin-top:25px;
-}
-
-.card{
-  background:#0d1117;
-  border:1px solid #2b3139;
-  border-radius:14px;
-  padding:18px;
-  margin-bottom:12px;
-  line-height:1.6;
-}
-
-.card strong{
-  display:block;
-  margin-bottom:8px;
-}
-
-.quente{
-  color:#ff6b6b;
-  font-weight:bold;
-}
-
-.morno{
-  color:#f0b95a;
-  font-weight:bold;
-}
-
-.frio{
-  color:#62a8ff;
-  font-weight:bold;
-}
-
-.compatibilidade{
-  color:#7ee787;
-  font-weight:bold;
-}
-
-.historico-topo{
-  display:flex;
-  justify-content:space-between;
-  gap:15px;
-  align-items:center;
-  flex-wrap:wrap;
-  margin-bottom:18px;
-}
-
-.historico-topo select{
-  width:auto;
-  margin:0;
-}
-
-.lead{
-  background:#0d1117;
-  border:1px solid #2b3139;
-  border-radius:14px;
-  padding:18px;
-  margin-bottom:12px;
-}
-
-.lead p{
-  margin-top:7px;
-  color:#bbb;
-}
-
-.lead-topo{
-  display:flex;
-  justify-content:space-between;
-  gap:20px;
-}
-
-.data{
-  color:#777;
-  font-size:13px;
-}
-
-.vazio{
-  text-align:center;
-  color:#777;
-  padding:25px;
-}
-
-footer{
-  text-align:center;
-  padding:40px;
-  color:#666;
-}
-
-@media(max-width:800px){
-
-  .dashboard{
-    grid-template-columns:repeat(2,1fr);
-  }
-
-  .grid{
-    grid-template-columns:1fr;
-  }
-
-  header{
-    flex-direction:column;
-    gap:10px;
-  }
-
-  .hero h1{
-    font-size:34px;
-  }
-
-}
-
-</style>
+      .titulo h1 {
+        font-size: 32px;
+      }
+    }
+  </style>
 </head>
 
 <body>
 
 <header>
 
-<div class="logo">
-Venda<span>AI</span>
-</div>
+  <div class="logo">
+    Venda<span>AI</span>
+  </div>
 
-<div>
-IA para imobiliárias
-</div>
+  <nav>
+    <a href="index.html" class="ativo">Dashboard</a>
+    <a href="empresa.html">Empresa</a>
+    <a href="imoveis.html">Imóveis</a>
+    <a href="leads.html">Leads</a>
+  </nav>
 
 </header>
 
 <div class="container">
 
-<div class="hero">
+  <div class="titulo">
+    <h1>Dashboard</h1>
+    <p>Visão geral da sua operação comercial.</p>
+  </div>
 
-<h1>
-Transforme leads em
-<span>vendas</span>
-</h1>
+  <div class="dashboard">
 
-<p>
-IA que analisa clientes e encontra imóveis compatíveis automaticamente.
-</p>
+    <div class="card">
+      <p>Total de leads</p>
+      <strong id="totalLeads">0</strong>
+    </div>
 
-</div>
+    <div class="card">
+      <p>🔥 Leads quentes</p>
+      <strong id="quentes">0</strong>
+    </div>
 
+    <div class="card">
+      <p>🏠 Imóveis cadastrados</p>
+      <strong id="totalImoveis">0</strong>
+    </div>
 
-<div class="dashboard">
+    <div class="card">
+      <p>🎯 Leads com match</p>
+      <strong id="comMatch">0</strong>
+    </div>
 
-<div class="numero-card">
-<p>Total de leads</p>
-<strong id="totalLeads">0</strong>
-</div>
+  </div>
 
-<div class="numero-card">
-<p>🔥 Quentes</p>
-<strong id="quentes">0</strong>
-</div>
+  <div class="atalhos">
 
-<div class="numero-card">
-<p>🏠 Imóveis cadastrados</p>
-<strong id="totalImoveis">0</strong>
-</div>
+    <a class="atalho" href="empresa.html">
+      <h3>⚙️ Empresa</h3>
+      <p>Configure os dados da imobiliária e as informações que a IA deve usar.</p>
+    </a>
 
-<div class="numero-card">
-<p>🎯 Leads com match</p>
-<strong id="comMatch">0</strong>
-</div>
+    <a class="atalho" href="imoveis.html">
+      <h3>🏠 Imóveis</h3>
+      <p>Cadastre e organize os imóveis disponíveis no catálogo.</p>
+    </a>
 
-</div>
+    <a class="atalho" href="leads.html">
+      <h3>🤖 Leads</h3>
+      <p>Analise clientes, encontre matches e acompanhe o histórico.</p>
+    </a>
 
-
-<div class="box">
-
-<h2>⚙️ Dados da imobiliária</h2>
-
-<div class="grid">
-
-<div>
-
-<label>Nome da imobiliária</label>
-
-<input
-id="empresaNome"
-placeholder="Ex: Imobiliária Prime"
->
+  </div>
 
 </div>
-
-<div>
-
-<label>Região atendida</label>
-
-<input
-id="empresaRegiao"
-placeholder="Ex: Porto Alegre e região metropolitana"
->
-
-</div>
-
-</div>
-
-<label>Diferenciais</label>
-
-<textarea
-id="empresaDiferenciais"
-placeholder="Ex: Financiamento, atendimento personalizado, visitas aos sábados..."
-></textarea>
-
-<label>Observações</label>
-
-<textarea
-id="empresaObservacoes"
-placeholder="Ex: Atendimento de segunda a sábado."
-></textarea>
-
-<button
-class="botao-cheio"
-onclick="salvarEmpresa()"
->
-💾 Salvar dados da imobiliária
-</button>
-
-<div
-id="empresaSalva"
-class="aviso"
->
-✅ Dados salvos.
-</div>
-
-</div>
-
-
-
-<div class="box">
-
-<h2>🏠 Cadastrar imóvel</h2>
-
-<div class="grid">
-
-<div>
-
-<label>Título</label>
-
-<input
-id="imovelTitulo"
-placeholder="Ex: Casa 3 quartos no Jardim Europa"
->
-
-</div>
-
-<div>
-
-<label>Tipo</label>
-
-<select id="imovelTipo">
-
-<option>Casa</option>
-<option>Apartamento</option>
-<option>Terreno</option>
-<option>Comercial</option>
-
-</select>
-
-</div>
-
-
-<div>
-
-<label>Finalidade</label>
-
-<select id="imovelFinalidade">
-
-<option>Compra</option>
-<option>Aluguel</option>
-
-</select>
-
-</div>
-
-
-<div>
-
-<label>Preço</label>
-
-<input
-id="imovelPreco"
-type="number"
-placeholder="500000"
->
-
-</div>
-
-
-<div>
-
-<label>Bairro</label>
-
-<input
-id="imovelBairro"
-placeholder="Ex: Menino Deus"
->
-
-</div>
-
-
-<div>
-
-<label>Cidade</label>
-
-<input
-id="imovelCidade"
-placeholder="Ex: Porto Alegre"
->
-
-</div>
-
-
-<div>
-
-<label>Quartos</label>
-
-<input
-id="imovelQuartos"
-type="number"
-placeholder="3"
->
-
-</div>
-
-
-<div>
-
-<label>Garagem</label>
-
-<select id="imovelGaragem">
-
-<option>Sim</option>
-<option>Não</option>
-
-</select>
-
-</div>
-
-</div>
-
-
-<label>Descrição</label>
-
-<textarea
-id="imovelDescricao"
-placeholder="Ex: Casa com pátio, churrasqueira, 3 quartos..."
-></textarea>
-
-
-<button
-class="botao-cheio"
-onclick="cadastrarImovel()"
->
-➕ Adicionar imóvel
-</button>
-
-</div>
-
-
-
-<div class="box">
-
-<div class="historico-topo">
-
-<h2>🏘️ Catálogo de imóveis</h2>
-
-<button
-class="botao-secundario"
-onclick="limparCatalogo()"
->
-Limpar catálogo
-</button>
-
-</div>
-
-<div id="catalogo"></div>
-
-</div>
-
-
-
-<div class="box">
-
-<h2>🤖 Analisar lead</h2>
-
-<label>Nome do cliente</label>
-
-<input
-id="nome"
-placeholder="Ex: João"
->
-
-
-<label>Mensagem do cliente</label>
-
-<textarea
-id="mensagem"
-placeholder="Ex: Procuro uma casa de até R$ 500 mil com 3 quartos..."
-></textarea>
-
-
-<button
-id="botao"
-class="botao-cheio"
-onclick="analisarLead()"
->
-🤖 Analisar cliente
-</button>
-
-
-<div id="resultado"></div>
-
-</div>
-
-
-
-<div class="box">
-
-<div class="historico-topo">
-
-<h2>📋 Histórico de leads</h2>
-
-<div>
-
-<select
-id="filtro"
-onchange="mostrarHistorico()"
->
-
-<option value="Todos">
-Todos
-</option>
-
-<option value="Quente">
-🔥 Quentes
-</option>
-
-<option value="Morno">
-🟡 Mornos
-</option>
-
-<option value="Frio">
-❄️ Frios
-</option>
-
-</select>
-
-<button
-class="botao-secundario"
-onclick="limparHistorico()"
->
-Limpar
-</button>
-
-</div>
-
-</div>
-
-<div id="historico"></div>
-
-</div>
-
-</div>
-
-
-<footer>
-VendaAI • Inteligência artificial para imobiliárias
-</footer>
-
 
 <script>
-
-let empresa =
-JSON.parse(
-localStorage.getItem("vendaAIEmpresa")
-) || {};
-
-
-let imoveis =
-JSON.parse(
-localStorage.getItem("vendaAIImoveis")
-) || [];
-
-
-let leads =
-JSON.parse(
-localStorage.getItem("vendaAILeads")
-) || [];
-
-
-
-function salvarEmpresa(){
-
-empresa = {
-
-nome:
-document.getElementById("empresaNome")
-.value.trim(),
-
-regiao:
-document.getElementById("empresaRegiao")
-.value.trim(),
-
-diferenciais:
-document.getElementById("empresaDiferenciais")
-.value.trim(),
-
-observacoes:
-document.getElementById("empresaObservacoes")
-.value.trim()
-
-};
-
-
-localStorage.setItem(
-"vendaAIEmpresa",
-JSON.stringify(empresa)
-);
-
-
-const aviso =
-document.getElementById("empresaSalva");
-
-aviso.style.display="block";
-
-setTimeout(()=>{
-aviso.style.display="none";
-},2000);
-
-}
-
-
-
-function carregarEmpresa(){
-
-document.getElementById("empresaNome").value =
-empresa.nome || "";
-
-document.getElementById("empresaRegiao").value =
-empresa.regiao || "";
-
-document.getElementById("empresaDiferenciais").value =
-empresa.diferenciais || "";
-
-document.getElementById("empresaObservacoes").value =
-empresa.observacoes || "";
-
-}
-
-
-
-function cadastrarImovel(){
-
-const titulo =
-document.getElementById("imovelTitulo")
-.value.trim();
-
-const preco =
-document.getElementById("imovelPreco")
-.value;
-
-
-if(!titulo || !preco){
-
-alert(
-"Preencha pelo menos o título e o preço do imóvel."
-);
-
-return;
-
-}
-
-
-const imovel = {
-
-id:Date.now(),
-
-titulo,
-
-tipo:
-document.getElementById("imovelTipo").value,
-
-finalidade:
-document.getElementById("imovelFinalidade").value,
-
-preco:Number(preco),
-
-bairro:
-document.getElementById("imovelBairro")
-.value.trim(),
-
-cidade:
-document.getElementById("imovelCidade")
-.value.trim(),
-
-quartos:
-Number(
-document.getElementById("imovelQuartos")
-.value || 0
-),
-
-garagem:
-document.getElementById("imovelGaragem").value,
-
-descricao:
-document.getElementById("imovelDescricao")
-.value.trim()
-
-};
-
-
-imoveis.unshift(imovel);
-
-
-localStorage.setItem(
-"vendaAIImoveis",
-JSON.stringify(imoveis)
-);
-
-
-limparFormularioImovel();
-
-mostrarCatalogo();
-
-atualizarDashboard();
-
-}
-
-
-
-function limparFormularioImovel(){
-
-document.getElementById("imovelTitulo").value="";
-document.getElementById("imovelPreco").value="";
-document.getElementById("imovelBairro").value="";
-document.getElementById("imovelCidade").value="";
-document.getElementById("imovelQuartos").value="";
-document.getElementById("imovelDescricao").value="";
-
-}
-
-
-
-function mostrarCatalogo(){
-
-const area =
-document.getElementById("catalogo");
-
-
-if(imoveis.length===0){
-
-area.innerHTML = `
-<div class="vazio">
-Nenhum imóvel cadastrado.
-</div>
-`;
-
-return;
-
-}
-
-
-area.innerHTML =
-imoveis.map(imovel=>`
-
-<div class="imovel">
-
-<div class="imovel-topo">
-
-<div>
-
-<h3>
-${escaparHTML(imovel.titulo)}
-</h3>
-
-<div class="preco">
-${formatarDinheiro(imovel.preco)}
-</div>
-
-</div>
-
-<button
-class="botao-perigo"
-onclick="excluirImovel(${imovel.id})"
->
-Excluir
-</button>
-
-</div>
-
-
-<p>
-<strong>Tipo:</strong>
-${escaparHTML(imovel.tipo)}
-</p>
-
-<p>
-<strong>Finalidade:</strong>
-${escaparHTML(imovel.finalidade)}
-</p>
-
-<p>
-<strong>Local:</strong>
-${escaparHTML(imovel.bairro)}
-${imovel.bairro && imovel.cidade ? " - " : ""}
-${escaparHTML(imovel.cidade)}
-</p>
-
-<p>
-<strong>Quartos:</strong>
-${imovel.quartos || "Não informado"}
-</p>
-
-<p>
-<strong>Garagem:</strong>
-${escaparHTML(imovel.garagem)}
-</p>
-
-<p>
-${escaparHTML(imovel.descricao)}
-</p>
-
-</div>
-
-`).join("");
-
-}
-
-
-
-function excluirImovel(id){
-
-imoveis =
-imoveis.filter(
-imovel => imovel.id !== id
-);
-
-
-localStorage.setItem(
-"vendaAIImoveis",
-JSON.stringify(imoveis)
-);
-
-
-mostrarCatalogo();
-
-atualizarDashboard();
-
-}
-
-
-
-function limparCatalogo(){
-
-if(
-!confirm(
-"Apagar todos os imóveis cadastrados?"
-)
-){
-return;
-}
-
-
-imoveis=[];
-
-
-localStorage.removeItem(
-"vendaAIImoveis"
-);
-
-
-mostrarCatalogo();
-
-atualizarDashboard();
-
-}
-
-
-
-async function analisarLead(){
-
-const nome =
-document.getElementById("nome")
-.value.trim() || "Cliente";
-
-const mensagem =
-document.getElementById("mensagem")
-.value.trim();
-
-const resultado =
-document.getElementById("resultado");
-
-const botao =
-document.getElementById("botao");
-
-
-if(!mensagem){
-
-alert(
-"Digite a mensagem do cliente."
-);
-
-return;
-
-}
-
-
-resultado.style.display="block";
-
-resultado.innerHTML = `
-<div class="card">
-🤖 Procurando oportunidades...
-</div>
-`;
-
-
-botao.disabled=true;
-
-botao.textContent=
-"Analisando...";
-
-
-try{
-
-
-const resposta =
-await fetch(
-"/api/analisar",
-{
-
-method:"POST",
-
-headers:{
-"Content-Type":"application/json"
-},
-
-body:JSON.stringify({
-
-nome,
-mensagem,
-empresa,
-imoveis
-
-})
-
-}
-);
-
-
-const dados =
-await resposta.json();
-
-
-if(!resposta.ok){
-
-throw new Error(
-dados.erro ||
-"Não foi possível analisar."
-);
-
-}
-
-
-const classe =
-normalizarStatus(
-dados.status
-);
-
-
-let matchesHTML = "";
-
-
-if(
-dados.imoveisCompativeis &&
-dados.imoveisCompativeis.length
-){
-
-matchesHTML = `
-
-<div class="card">
-
-<strong>
-🏠 Imóveis compatíveis
-</strong>
-
-${dados.imoveisCompativeis.map(item=>`
-
-<div style="
-margin-top:12px;
-padding-top:12px;
-border-top:1px solid #222;
-">
-
-<div class="compatibilidade">
-${escaparHTML(item.titulo)}
-</div>
-
-<div>
-${escaparHTML(item.motivo)}
-</div>
-
-</div>
-
-`).join("")}
-
-</div>
-
-`;
-
-}
-
-
-resultado.innerHTML = `
-
-<div class="card">
-
-<strong>
-🔥 Temperatura do lead
-</strong>
-
-<span class="${classe}">
-${escaparHTML(dados.status)}
-</span>
-
-</div>
-
-
-<div class="card">
-
-<strong>
-🎯 Intenção
-</strong>
-
-${escaparHTML(dados.intencao)}
-
-</div>
-
-
-${matchesHTML}
-
-
-<div class="card">
-
-<strong>
-💬 Resposta sugerida
-</strong>
-
-${escaparHTML(dados.resposta)}
-
-</div>
-
-
-<div class="card">
-
-<strong>
-➡️ Próximo passo
-</strong>
-
-${escaparHTML(dados.proximoPasso)}
-
-</div>
-
-`;
-
-
-salvarLead({
-
-id:Date.now(),
-
-nome,
-
-mensagem,
-
-status:
-dados.status,
-
-intencao:
-dados.intencao,
-
-resposta:
-dados.resposta,
-
-proximoPasso:
-dados.proximoPasso,
-
-temMatch:
-dados.imoveisCompativeis?.length > 0,
-
-data:
-new Date().toLocaleString("pt-BR")
-
-});
-
-
-}catch(erro){
-
-resultado.innerHTML = `
-
-<div class="card">
-
-❌ Erro:
-
-${escaparHTML(
-erro.message
-)}
-
-</div>
-
-`;
-
-}
-
-
-botao.disabled=false;
-
-botao.textContent=
-"🤖 Analisar cliente";
-
-}
-
-
-
-function salvarLead(lead){
-
-leads.unshift(lead);
-
-
-localStorage.setItem(
-"vendaAILeads",
-JSON.stringify(leads)
-);
-
-
-mostrarHistorico();
-
-atualizarDashboard();
-
-}
-
-
-
-function mostrarHistorico(){
-
-const area =
-document.getElementById("historico");
-
-const filtro =
-document.getElementById("filtro")
-.value;
-
-
-let lista=leads;
-
-
-if(filtro!=="Todos"){
-
-lista =
-leads.filter(
-lead =>
-lead.status
-.toLowerCase()
-.includes(
-filtro.toLowerCase()
-)
-);
-
-}
-
-
-if(lista.length===0){
-
-area.innerHTML=`
-
-<div class="vazio">
-Nenhum lead salvo.
-</div>
-
-`;
-
-return;
-
-}
-
-
-area.innerHTML =
-lista.map(lead=>{
-
-const classe =
-normalizarStatus(
-lead.status
-);
-
-
-return `
-
-<div class="lead">
-
-<div class="lead-topo">
-
-<div>
-
-<strong>
-${escaparHTML(lead.nome)}
-</strong>
-
-<div class="${classe}">
-${escaparHTML(lead.status)}
-</div>
-
-</div>
-
-<div class="data">
-${escaparHTML(lead.data)}
-</div>
-
-</div>
-
-
-<p>
-<strong>Mensagem:</strong>
-${escaparHTML(lead.mensagem)}
-</p>
-
-
-<p>
-<strong>🎯 Intenção:</strong>
-${escaparHTML(lead.intencao)}
-</p>
-
-
-<p>
-<strong>💬 Resposta:</strong>
-${escaparHTML(lead.resposta)}
-</p>
-
-
-<p>
-<strong>➡️ Próximo passo:</strong>
-${escaparHTML(lead.proximoPasso)}
-</p>
-
-</div>
-
-`;
-
-}).join("");
-
-}
-
-
-
-function atualizarDashboard(){
-
-document.getElementById(
-"totalLeads"
-).textContent =
-leads.length;
-
-
-document.getElementById(
-"quentes"
-).textContent =
-leads.filter(
-l =>
-l.status
-.toLowerCase()
-.includes("quente")
-).length;
-
-
-document.getElementById(
-"totalImoveis"
-).textContent =
-imoveis.length;
-
-
-document.getElementById(
-"comMatch"
-).textContent =
-leads.filter(
-l => l.temMatch
-).length;
-
-}
-
-
-
-function limparHistorico(){
-
-if(
-!confirm(
-"Apagar todo o histórico de leads?"
-)
-){
-return;
-}
-
-
-leads=[];
-
-
-localStorage.removeItem(
-"vendaAILeads"
-);
-
-
-mostrarHistorico();
-
-atualizarDashboard();
-
-}
-
-
-
-function normalizarStatus(status){
-
-return (status || "")
-.toLowerCase()
-.normalize("NFD")
-.replace(
-/[\u0300-\u036f]/g,
-""
-);
-
-}
-
-
-
-function formatarDinheiro(valor){
-
-return Number(valor)
-.toLocaleString(
-"pt-BR",
-{
-style:"currency",
-currency:"BRL"
-}
-);
-
-}
-
-
-
-function escaparHTML(texto){
-
-const div =
-document.createElement("div");
-
-div.textContent =
-texto || "";
-
-return div.innerHTML;
-
-}
-
-
-
-carregarEmpresa();
-
-mostrarCatalogo();
-
-mostrarHistorico();
-
-atualizarDashboard();
-
+const leads =
+  JSON.parse(localStorage.getItem("vendaAILeads")) || [];
+
+const imoveis =
+  JSON.parse(localStorage.getItem("vendaAIImoveis")) || [];
+
+document.getElementById("totalLeads").textContent =
+  leads.length;
+
+document.getElementById("quentes").textContent =
+  leads.filter(
+    lead =>
+      String(lead.status || "")
+        .toLowerCase()
+        .includes("quente")
+  ).length;
+
+document.getElementById("totalImoveis").textContent =
+  imoveis.length;
+
+document.getElementById("comMatch").textContent =
+  leads.filter(
+    lead => lead.temMatch
+  ).length;
 </script>
 
 </body>
