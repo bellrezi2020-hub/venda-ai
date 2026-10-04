@@ -52,7 +52,7 @@
       color: #6c63ff;
     }
 
-    .hero p {
+    .hero > p {
       font-size: 20px;
       color: #aaa;
       line-height: 1.6;
@@ -89,7 +89,7 @@
     }
 
     textarea {
-      min-height: 100px;
+      min-height: 110px;
       resize: vertical;
     }
 
@@ -105,24 +105,79 @@
       cursor: pointer;
     }
 
+    button:hover {
+      opacity: 0.9;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
     #resultado {
       display: none;
       margin-top: 25px;
-      background: #0d1117;
-      padding: 20px;
-      border-radius: 12px;
-      line-height: 1.7;
     }
 
-    .tag {
-      color: #6c63ff;
+    .card {
+      background: #0d1117;
+      border: 1px solid #2b3139;
+      border-radius: 14px;
+      padding: 18px;
+      margin-bottom: 14px;
+      line-height: 1.6;
+    }
+
+    .card strong {
+      display: block;
+      margin-bottom: 8px;
+      color: #fff;
+    }
+
+    .status {
+      font-size: 20px;
       font-weight: bold;
+      color: #6c63ff;
+    }
+
+    .loading {
+      background: #0d1117;
+      border: 1px solid #2b3139;
+      border-radius: 14px;
+      padding: 20px;
+      text-align: center;
+      color: #bbb;
+    }
+
+    .erro {
+      background: #0d1117;
+      border: 1px solid #5a2a2a;
+      border-radius: 14px;
+      padding: 20px;
+      color: #ff9b9b;
+      line-height: 1.6;
     }
 
     footer {
       text-align: center;
       padding: 40px;
       color: #666;
+    }
+
+    @media (max-width: 600px) {
+      header {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+      }
+
+      h1 {
+        font-size: 36px;
+      }
+
+      .hero {
+        padding-top: 60px;
+      }
     }
   </style>
 </head>
@@ -142,13 +197,14 @@
   </h1>
 
   <p>
-    Uma inteligência artificial que conversa com seus clientes,
-    entende o que eles procuram e identifica oportunidades de venda.
+    Uma inteligência artificial que entende mensagens,
+    identifica oportunidades de venda e sugere o próximo passo.
   </p>
 
   <div class="box">
 
-    <label>Tipo de negócio</label>
+    <label for="negocio">Tipo de negócio</label>
+
     <select id="negocio">
       <option>Imobiliária</option>
       <option>Loja de roupas</option>
@@ -157,16 +213,22 @@
       <option>Outro negócio</option>
     </select>
 
-    <label>Nome do cliente</label>
-    <input id="nome" type="text" placeholder="Ex: João">
+    <label for="nome">Nome do cliente</label>
 
-    <label>Mensagem do cliente</label>
+    <input
+      id="nome"
+      type="text"
+      placeholder="Ex: João"
+    >
+
+    <label for="mensagem">Mensagem do cliente</label>
+
     <textarea
       id="mensagem"
-      placeholder="Ex: Estou procurando uma casa de até R$ 500 mil com 3 quartos..."
+      placeholder="Ex: Procuro uma casa de até R$ 500 mil, com 3 quartos e garagem..."
     ></textarea>
 
-    <button onclick="analisarLead()">
+    <button id="botao" onclick="analisarLead()">
       🤖 Analisar cliente
     </button>
 
@@ -182,18 +244,28 @@
 
 <script>
 async function analisarLead() {
-  const nome = document.getElementById("nome").value || "Cliente";
-  const mensagem = document.getElementById("mensagem").value;
+  const nome = document.getElementById("nome").value.trim() || "Cliente";
+  const mensagem = document.getElementById("mensagem").value.trim();
   const negocio = document.getElementById("negocio").value;
-  const resultado = document.getElementById("resultado");
 
-  if (!mensagem.trim()) {
+  const resultado = document.getElementById("resultado");
+  const botao = document.getElementById("botao");
+
+  if (!mensagem) {
     alert("Digite a mensagem do cliente.");
     return;
   }
 
   resultado.style.display = "block";
-  resultado.innerHTML = "🤖 Analisando cliente...";
+
+  resultado.innerHTML = `
+    <div class="loading">
+      🤖 Analisando cliente...
+    </div>
+  `;
+
+  botao.disabled = true;
+  botao.textContent = "Analisando...";
 
   try {
     const resposta = await fetch("/api/analisar", {
@@ -211,24 +283,53 @@ async function analisarLead() {
     const dados = await resposta.json();
 
     if (!resposta.ok) {
-      throw new Error(dados.erro || "Erro ao analisar.");
+      throw new Error(
+        dados.erro || "Não foi possível analisar o cliente."
+      );
     }
 
-    const texto = dados.resposta.replace(/\n/g, "<br>");
-
     resultado.innerHTML = `
-      <span class="tag">✨ Análise da IA</span>
-      <br><br>
-      ${texto}
+      <div class="card">
+        <strong>🔥 Temperatura do lead</strong>
+        <div class="status">
+          ${escaparHTML(dados.status)}
+        </div>
+      </div>
+
+      <div class="card">
+        <strong>🎯 Intenção do cliente</strong>
+        ${escaparHTML(dados.intencao)}
+      </div>
+
+      <div class="card">
+        <strong>💬 Resposta sugerida</strong>
+        ${escaparHTML(dados.resposta)}
+      </div>
+
+      <div class="card">
+        <strong>➡️ Próximo passo</strong>
+        ${escaparHTML(dados.proximoPasso)}
+      </div>
     `;
 
   } catch (erro) {
     resultado.innerHTML = `
-      ❌ Não foi possível analisar agora.
-      <br><br>
-      ${erro.message}
+      <div class="erro">
+        ❌ Não foi possível analisar agora.
+        <br><br>
+        ${escaparHTML(erro.message)}
+      </div>
     `;
   }
+
+  botao.disabled = false;
+  botao.textContent = "🤖 Analisar cliente";
+}
+
+function escaparHTML(texto) {
+  const div = document.createElement("div");
+  div.textContent = texto || "";
+  return div.innerHTML;
 }
 </script>
 
