@@ -1,3 +1,186 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VendaAI</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #0d1117;
+      color: white;
+      min-height: 100vh;
+    }
+
+    header {
+      padding: 25px 8%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #222;
+    }
+
+    .logo {
+      font-size: 26px;
+      font-weight: bold;
+    }
+
+    .logo span {
+      color: #6c63ff;
+    }
+
+    .hero {
+      max-width: 900px;
+      margin: auto;
+      padding: 90px 25px 50px;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 52px;
+      margin-bottom: 20px;
+    }
+
+    h1 span {
+      color: #6c63ff;
+    }
+
+    .hero p {
+      font-size: 20px;
+      color: #aaa;
+      line-height: 1.6;
+      margin-bottom: 40px;
+    }
+
+    .box {
+      max-width: 650px;
+      margin: auto;
+      background: #161b22;
+      padding: 30px;
+      border-radius: 18px;
+      text-align: left;
+      border: 1px solid #2b3139;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      padding: 14px;
+      margin-bottom: 20px;
+      background: #0d1117;
+      color: white;
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      font-size: 16px;
+    }
+
+    textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    button {
+      width: 100%;
+      padding: 16px;
+      background: #6c63ff;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 17px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    #resultado {
+      display: none;
+      margin-top: 25px;
+      background: #0d1117;
+      padding: 20px;
+      border-radius: 12px;
+      line-height: 1.7;
+    }
+
+    .tag {
+      color: #6c63ff;
+      font-weight: bold;
+    }
+
+    footer {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <div class="logo">Venda<span>AI</span></div>
+  <div>Seu vendedor com inteligência artificial</div>
+</header>
+
+<section class="hero">
+
+  <h1>
+    Transforme visitantes em
+    <span>clientes</span>
+  </h1>
+
+  <p>
+    Uma inteligência artificial que conversa com seus clientes,
+    entende o que eles procuram e identifica oportunidades de venda.
+  </p>
+
+  <div class="box">
+
+    <label>Tipo de negócio</label>
+    <select id="negocio">
+      <option>Imobiliária</option>
+      <option>Loja de roupas</option>
+      <option>Clínica de estética</option>
+      <option>Academia</option>
+      <option>Outro negócio</option>
+    </select>
+
+    <label>Nome do cliente</label>
+    <input id="nome" type="text" placeholder="Ex: João">
+
+    <label>Mensagem do cliente</label>
+    <textarea
+      id="mensagem"
+      placeholder="Ex: Estou procurando uma casa de até R$ 500 mil com 3 quartos..."
+    ></textarea>
+
+    <button onclick="analisarLead()">
+      🤖 Analisar cliente
+    </button>
+
+    <div id="resultado"></div>
+
+  </div>
+
+</section>
+
+<footer>
+  VendaAI • IA para vendas
+</footer>
+
+<script>
 async function analisarLead() {
   const nome = document.getElementById("nome").value || "Cliente";
   const mensagem = document.getElementById("mensagem").value;
@@ -31,8 +214,7 @@ async function analisarLead() {
       throw new Error(dados.erro || "Erro ao analisar.");
     }
 
-    const texto = dados.resposta
-      .replace(/\n/g, "<br>");
+    const texto = dados.resposta.replace(/\n/g, "<br>");
 
     resultado.innerHTML = `
       <span class="tag">✨ Análise da IA</span>
@@ -48,3 +230,7 @@ async function analisarLead() {
     `;
   }
 }
+</script>
+
+</body>
+</html>
