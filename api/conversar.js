@@ -1,5 +1,4 @@
 export default async function handler(req, res) {
-
   if (req.method !== "POST") {
     return res.status(405).json({
       erro: "Método não permitido"
@@ -7,14 +6,12 @@ export default async function handler(req, res) {
   }
 
   try {
-
     const {
       lead,
       empresa,
       imoveis,
       mensagens
     } = req.body;
-
 
     const historico = (mensagens || [])
       .map(m => {
@@ -26,7 +23,6 @@ export default async function handler(req, res) {
         return `${papel}: ${m.content}`;
       })
       .join("\n");
-
 
     const catalogo = (imoveis || [])
       .map(i => `
@@ -42,11 +38,24 @@ Descrição: ${i.description || ""}
 `)
       .join("\n");
 
-
     const prompt = `
-Você é um assistente comercial especialista em vendas imobiliárias.
+Você é um assistente comercial de uma imobiliária.
 
-Você está continuando uma conversa que já começou.
+IMPORTANTE:
+Você NÃO possui acesso a agenda,
+calendário, corretor ou sistema de confirmação.
+
+Portanto:
+
+NUNCA diga que uma visita está confirmada.
+NUNCA diga que um horário está reservado.
+NUNCA diga que um corretor foi designado.
+NUNCA invente endereço.
+NUNCA invente contato de corretor.
+
+Se o cliente pedir para marcar uma visita,
+você deve dizer que a solicitação será
+encaminhada para confirmação pela imobiliária.
 
 ========================
 EMPRESA
@@ -64,7 +73,6 @@ ${empresa?.differentials || "Não informado"}
 Observações:
 ${empresa?.notes || "Não informado"}
 
-
 ========================
 LEAD
 ========================
@@ -75,12 +83,8 @@ ${lead?.name || "Cliente"}
 Temperatura anterior:
 ${lead?.temperature || "Não informado"}
 
-Intenção anterior:
+Intenção:
 ${lead?.intent || "Não informado"}
-
-Próximo passo anterior:
-${lead?.next_step || "Não informado"}
-
 
 ========================
 CATÁLOGO REAL
@@ -88,103 +92,50 @@ CATÁLOGO REAL
 
 ${catalogo || "Nenhum imóvel cadastrado."}
 
-
 ========================
 CONVERSA
 ========================
 
 ${historico}
 
-
 ========================
-OBJETIVO
+TAREFA
 ========================
 
-Continue a conversa com o cliente.
+Atualize:
 
-Você deve:
+status:
+somente "Quente", "Morno" ou "Frio"
 
-1. Entender as novas informações dadas pelo cliente.
+intencao:
+resumo atualizado do objetivo do cliente
 
-2. Atualizar a intenção comercial.
+resposta:
+mensagem natural para enviar ao cliente
 
-3. Atualizar a temperatura do lead.
+proximoPasso:
+ação interna da imobiliária
 
-A temperatura DEVE SER EXATAMENTE UMA destas opções:
+solicitouVisita:
+true se o cliente pediu para marcar/agendar visita
 
-"Quente"
-"Morno"
-"Frio"
+imoveisCompativeis:
+no máximo 3 imóveis REAIS do catálogo
 
-NUNCA retorne:
-Sucesso
-Interessado
-Qualificado
-Alta
-Fechado
-Pronto
-ou qualquer outro valor.
+Se o cliente pedir visita:
 
-Use:
+A resposta deve seguir esta lógica:
 
-QUENTE:
-Cliente demonstra intenção clara de comprar,
-alugar, visitar, negociar ou tomar decisão em breve.
+"Perfeito! Vou encaminhar sua preferência
+de dia e horário para a imobiliária confirmar
+a disponibilidade da visita."
 
-MORNO:
-Cliente tem interesse real,
-mas ainda está pesquisando,
-comparando ou sem prazo claro.
+Pode mencionar o imóvel cadastrado,
+mas não confirme o horário.
 
-FRIO:
-Cliente tem pouca intenção comercial
-ou apenas está pesquisando sem intenção definida.
-
-
-4. Encontre no máximo 3 imóveis compatíveis.
-
-Use SOMENTE imóveis realmente presentes no catálogo.
-
-Nunca invente imóveis.
-
-5. Crie uma resposta natural para continuar a conversa.
-
-Faça no máximo UMA pergunta por vez.
-
-Não repita perguntas que o cliente já respondeu.
-
-Se o cliente já informou:
-
-- bairro
-- orçamento
-- quartos
-- garagem
-- intenção
-- prazo
-
-não pergunte novamente.
-
-Se ele informar disponibilidade para visita,
-avance para confirmar/agendar a visita.
-
-Não diga que uma visita está confirmada
-se ainda não houve confirmação da imobiliária.
-
-Não invente horários disponíveis.
-
-Não invente preços.
-
-Não invente descontos.
-
-Não invente disponibilidade.
-
-Não invente condições de financiamento.
-
-6. Determine o próximo passo comercial.
-
+Não invente nenhuma informação.
 Responda em português do Brasil.
 `;
-
 
     const resposta = await fetch(
       "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent",
@@ -193,13 +144,11 @@ Responda em português do Brasil.
 
         headers: {
           "Content-Type": "application/json",
-
           "x-goog-api-key":
             process.env.GEMINI_API_KEY
         },
 
         body: JSON.stringify({
-
           contents: [
             {
               parts: [
@@ -211,16 +160,13 @@ Responda em português do Brasil.
           ],
 
           generationConfig: {
-
             responseMimeType:
               "application/json",
 
             responseSchema: {
-
               type: "OBJECT",
 
               properties: {
-
                 status: {
                   type: "STRING",
                   enum: [
@@ -242,16 +188,17 @@ Responda em português do Brasil.
                   type: "STRING"
                 },
 
-                imoveisCompativeis: {
+                solicitouVisita: {
+                  type: "BOOLEAN"
+                },
 
+                imoveisCompativeis: {
                   type: "ARRAY",
 
                   items: {
-
                     type: "OBJECT",
 
                     properties: {
-
                       titulo: {
                         type: "STRING"
                       },
@@ -259,18 +206,14 @@ Responda em português do Brasil.
                       motivo: {
                         type: "STRING"
                       }
-
                     },
 
                     required: [
                       "titulo",
                       "motivo"
                     ]
-
                   }
-
                 }
-
               },
 
               required: [
@@ -278,77 +221,83 @@ Responda em português do Brasil.
                 "intencao",
                 "resposta",
                 "proximoPasso",
+                "solicitouVisita",
                 "imoveisCompativeis"
               ]
-
             }
-
           }
-
         })
-
       }
     );
-
 
     const dados =
       await resposta.json();
 
-
     if (!resposta.ok) {
-
       console.error(dados);
 
       return res.status(500).json({
         erro:
           "Erro ao consultar a inteligência artificial."
       });
-
     }
-
 
     const texto =
       dados?.candidates?.[0]
         ?.content?.parts?.[0]?.text;
 
-
     if (!texto) {
-
       return res.status(500).json({
         erro:
           "A IA não retornou resposta."
       });
-
     }
-
 
     const analise =
       JSON.parse(texto);
 
-
-    const statusPermitidos =
-      ["Quente", "Morno", "Frio"];
-
+    const permitidos = [
+      "Quente",
+      "Morno",
+      "Frio"
+    ];
 
     if (
-      !statusPermitidos.includes(
+      !permitidos.includes(
         analise.status
       )
     ) {
-
       analise.status =
-        lead?.temperature &&
-        statusPermitidos.includes(
-          lead.temperature
+        permitidos.includes(
+          lead?.temperature
         )
           ? lead.temperature
           : "Morno";
-
     }
 
+    /*
+      PROTEÇÃO EXTRA DO SERVIDOR
+
+      Mesmo que a IA tente confirmar
+      uma visita indevidamente,
+      substituímos a resposta.
+    */
+
+    if (analise.solicitouVisita) {
+      const primeiroImovel =
+        analise.imoveisCompativeis?.[0]
+          ?.titulo;
+
+      analise.resposta =
+        primeiroImovel
+          ? `Perfeito, ${lead?.name || "Cliente"}! Vou encaminhar sua preferência de dia e horário para a imobiliária confirmar a disponibilidade da visita ao imóvel ${primeiroImovel}. Assim que houver confirmação, você recebe os detalhes.`
+          : `Perfeito, ${lead?.name || "Cliente"}! Vou encaminhar sua preferência de dia e horário para a imobiliária confirmar a disponibilidade da visita. Assim que houver confirmação, você recebe os detalhes.`;
+
+      analise.proximoPasso =
+        "Confirmar internamente a disponibilidade da visita e depois retornar ao cliente.";
+    }
 
     return res.status(200).json({
-
       status:
         analise.status,
 
@@ -361,21 +310,19 @@ Responda em português do Brasil.
       proximoPasso:
         analise.proximoPasso,
 
+      solicitouVisita:
+        analise.solicitouVisita,
+
       imoveisCompativeis:
         analise.imoveisCompativeis || []
-
     });
 
-
   } catch (erro) {
-
     console.error(erro);
 
     return res.status(500).json({
       erro:
         "Erro interno no servidor."
     });
-
   }
-
 }
