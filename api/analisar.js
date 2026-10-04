@@ -6,14 +6,13 @@ export default async function handler(req, res) {
     });
   }
 
-
   try {
 
     const {
       nome,
       mensagem,
-      negocio,
-      empresa
+      empresa,
+      imoveis
     } = req.body;
 
 
@@ -26,31 +25,48 @@ export default async function handler(req, res) {
     }
 
 
+    const catalogo =
+      Array.isArray(imoveis)
+        ? imoveis
+        : [];
+
+
+    const catalogoTexto =
+      catalogo.length
+        ? catalogo.map((imovel, index) => `
+
+IMÓVEL ${index + 1}
+
+ID: ${imovel.id}
+Título: ${imovel.titulo}
+Tipo: ${imovel.tipo}
+Finalidade: ${imovel.finalidade}
+Preço: R$ ${imovel.preco}
+Bairro: ${imovel.bairro || "Não informado"}
+Cidade: ${imovel.cidade || "Não informado"}
+Quartos: ${imovel.quartos || "Não informado"}
+Garagem: ${imovel.garagem || "Não informado"}
+Descrição: ${imovel.descricao || "Não informado"}
+
+`).join("\n")
+
+        : "Nenhum imóvel cadastrado.";
+
+
     const prompt = `
-Você é um vendedor especialista em qualificação de leads.
 
-Seu objetivo é ajudar a empresa a converter o cliente,
-mas você NUNCA pode inventar informações que a empresa
-não forneceu.
+Você é um assistente comercial especialista
+em vendas imobiliárias.
 
-========================
+Você trabalha para:
+
 EMPRESA
-========================
 
 Nome:
 ${empresa?.nome || "Não informado"}
 
-Tipo de negócio:
-${negocio || "Não informado"}
-
-Região atendida:
+Região:
 ${empresa?.regiao || "Não informado"}
-
-Produtos ou serviços:
-${empresa?.servicos || "Não informado"}
-
-Faixa de preços:
-${empresa?.precos || "Não informado"}
 
 Diferenciais:
 ${empresa?.diferenciais || "Não informado"}
@@ -59,9 +75,7 @@ Observações:
 ${empresa?.observacoes || "Não informado"}
 
 
-========================
 CLIENTE
-========================
 
 Nome:
 ${nome || "Cliente"}
@@ -70,54 +84,94 @@ Mensagem:
 ${mensagem}
 
 
-========================
-SUA TAREFA
-========================
+CATÁLOGO REAL DA IMOBILIÁRIA
 
-Analise a intenção comercial desse cliente.
-
-Classifique o lead apenas como:
-
-Quente
-Morno
-Frio
+${catalogoTexto}
 
 
-Use estas regras:
+TAREFA
+
+Analise o cliente e determine:
+
+1. Temperatura do lead:
+Quente, Morno ou Frio.
 
 QUENTE:
-cliente demonstra intenção clara de comprar,
-contratar, alugar, agendar ou tomar uma decisão em breve.
+quer comprar/alugar logo,
+tem necessidade concreta,
+prazo, orçamento ou forte intenção.
 
 MORNO:
-cliente demonstra interesse real,
-mas ainda está pesquisando, comparando ou sem prazo definido.
+tem interesse real,
+mas ainda está comparando ou sem prazo.
 
 FRIO:
-cliente demonstra pouca intenção comercial,
-está apenas curioso ou pesquisando sem intenção clara.
+está apenas pesquisando
+ou sem intenção comercial clara.
 
 
-Crie:
-
-1. status
-2. intencao
-3. resposta
-4. proximoPasso
+2. Resuma a intenção do cliente.
 
 
-Na resposta ao cliente:
+3. Analise SOMENTE os imóveis
+presentes no catálogo.
 
-- use as informações reais da empresa quando forem relevantes
-- não diga que existe um produto, imóvel ou serviço específico
-  se isso não estiver informado
-- não invente preços
-- não invente disponibilidade
-- não invente promoções
-- não prometa algo que a empresa não informou
-- faça perguntas inteligentes quando faltar informação
-- seja comercial, natural e objetivo
-- responda em português do Brasil
+Escolha no máximo 3 imóveis compatíveis.
+
+Um imóvel deve ser compatível considerando:
+
+- compra ou aluguel
+- tipo
+- orçamento
+- cidade
+- bairro
+- quartos
+- garagem
+- outras exigências mencionadas
+
+Nunca invente imóveis.
+
+Nunca diga que existe uma opção
+que não esteja no catálogo.
+
+Se nenhum imóvel for compatível,
+retorne uma lista vazia.
+
+
+4. Escreva uma resposta comercial
+natural para enviar ao cliente.
+
+Se houver imóvel compatível,
+mencione que existem opções compatíveis,
+mas não invente características.
+
+Se não houver,
+explique educadamente que
+não encontrou uma opção exata
+e faça uma pergunta útil.
+
+
+5. Determine o próximo passo comercial.
+
+
+REGRAS IMPORTANTES
+
+Não invente preço.
+
+Não invente disponibilidade.
+
+Não invente localização.
+
+Não invente características.
+
+Não prometa desconto.
+
+Não invente financiamento.
+
+Use somente dados fornecidos.
+
+Responda em português do Brasil.
+
 `;
 
 
@@ -130,6 +184,7 @@ Na resposta ao cliente:
 
           headers: {
             "Content-Type": "application/json",
+
             "x-goog-api-key":
               process.env.GEMINI_API_KEY
           },
@@ -171,6 +226,35 @@ Na resposta ao cliente:
 
                   proximoPasso: {
                     type: "STRING"
+                  },
+
+                  imoveisCompativeis: {
+
+                    type: "ARRAY",
+
+                    items: {
+
+                      type: "OBJECT",
+
+                      properties: {
+
+                        titulo: {
+                          type: "STRING"
+                        },
+
+                        motivo: {
+                          type: "STRING"
+                        }
+
+                      },
+
+                      required: [
+                        "titulo",
+                        "motivo"
+                      ]
+
+                    }
+
                   }
 
                 },
@@ -179,7 +263,8 @@ Na resposta ao cliente:
                   "status",
                   "intencao",
                   "resposta",
-                  "proximoPasso"
+                  "proximoPasso",
+                  "imoveisCompativeis"
                 ]
 
               }
@@ -239,7 +324,10 @@ Na resposta ao cliente:
         analise.resposta,
 
       proximoPasso:
-        analise.proximoPasso
+        analise.proximoPasso,
+
+      imoveisCompativeis:
+        analise.imoveisCompativeis || []
 
     });
 
