@@ -1,0 +1,4 @@
+No lead.html atual, adicione quando quiser:
+- botão para limpar conversa: delete em messages where lead_id = id
+- botão para excluir lead: delete em leads where id = id
+A V3 principal já mantém o fluxo Aguardando confirmação -> Confirmar visita -> Visita marcada.
