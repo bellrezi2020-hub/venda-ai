@@ -1,1 +1,682 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>VendaAI - Leads</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js"></script><script src="app.js"></script></head><body><div id="nav"></div><div class="container"><h1>Leads</h1><p class="sub">Analise e acompanhe o funil.</p><div class="box"><label>Nome</label><input id="nome"><label>Mensagem</label><textarea id="mensagem"></textarea><button id="btn" class="btn-full" onclick="analisar()">🤖 Analisar cliente</button><div id="resultado"></div></div><div class="box"><div class="grid-3"><div><label>Temperatura</label><select id="fTemp" onchange="carregar()"><option>Todos</option><option>Quente</option><option>Morno</option><option>Frio</option></select></div><div><label>Status</label><select id="fStatus" onchange="carregar()"><option>Todos</option><option>Novo</option><option>Em contato</option><option>Aguardando confirmação de visita</option><option>Visita marcada</option><option>Fechado</option><option>Perdido</option></select></div><div><label>Busca</label><input id="fBusca" oninput="carregar()"></div></div><div id="lista"></div></div></div><script>document.getElementById('nav').innerHTML=nav('leads');let c;(async()=>{await requireAuth();c=await currentCompany();if(!c){location.href='empresa.html';return}carregar()})();async function analisar(){if(!mensagem.value.trim())return;btn.disabled=true;const {data:props}=await supabaseClient.from('properties').select('*').eq('company_id',c.id);const r=await fetch('/api/analisar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nome:nome.value.trim()||'Cliente',mensagem:mensagem.value.trim(),empresa:c,imoveis:props||[]})});const d=await r.json();btn.disabled=false;if(!r.ok){resultado.innerHTML=`<div class="list-item danger">${esc(d.erro)}</div>`;return}resultado.innerHTML=`<div class="list-item"><div class="${normalizar(d.status)}">${esc(d.status)}</div><p>${esc(d.intencao)}</p></div>`;await supabaseClient.from('leads').insert({company_id:c.id,name:nome.value.trim()||'Cliente',original_message:mensagem.value.trim(),temperature:d.status,intent:d.intencao,suggested_reply:d.resposta,next_step:d.proximoPasso,status:'Novo',match_count:d.imoveisCompativeis?.length||0,matches:d.imoveisCompativeis||[],last_activity_at:new Date().toISOString()});carregar()}async function carregar(){let q=supabaseClient.from('leads').select('*').eq('company_id',c.id).order('created_at',{ascending:false});if(fTemp.value!=='Todos')q=q.eq('temperature',fTemp.value);if(fStatus.value!=='Todos')q=q.eq('status',fStatus.value);const {data}=await q;const t=fBusca.value.trim().toLowerCase();const a=(data||[]).filter(l=>!t||[l.name,l.intent].some(v=>String(v||'').toLowerCase().includes(t)));lista.innerHTML=a.map(l=>`<a class="list-item" href="lead.html?id=${l.id}" style="display:block;text-decoration:none"><div class="row"><div><strong>${esc(l.name)}</strong><div class="${normalizar(l.temperature)}">${esc(l.temperature)}</div></div><span class="badge">${esc(l.status)}</span></div><p class="muted small" style="margin-top:8px">${esc(l.intent||'')}</p></a>`).join('')||'<p class="muted">Nenhum lead.</p>'}</script></body></html>
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+
+  <title>VendaAI - Leads</title>
+
+  <link rel="stylesheet" href="styles.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</head>
+
+<body>
+
+  <div id="nav"></div>
+
+  <div class="container">
+
+    <h1>Leads</h1>
+
+    <p
+      class="sub"
+      id="sub"
+    >
+      Analise e acompanhe o funil.
+    </p>
+
+
+    <div
+      class="box"
+      id="novoLeadBox"
+    >
+
+      <label>
+        Nome
+      </label>
+
+      <input id="nome">
+
+
+      <label>
+        Mensagem
+      </label>
+
+      <textarea id="mensagem"></textarea>
+
+
+      <button
+        id="btn"
+        class="btn-full"
+        onclick="analisar()"
+      >
+        🤖 Analisar cliente
+      </button>
+
+
+      <div id="resultado"></div>
+
+    </div>
+
+
+    <div class="box">
+
+      <div class="grid-3">
+
+        <div>
+
+          <label>
+            Temperatura
+          </label>
+
+          <select
+            id="fTemp"
+            onchange="carregar()"
+          >
+            <option>Todos</option>
+            <option>Quente</option>
+            <option>Morno</option>
+            <option>Frio</option>
+          </select>
+
+        </div>
+
+
+        <div>
+
+          <label>
+            Status
+          </label>
+
+          <select
+            id="fStatus"
+            onchange="carregar()"
+          >
+            <option>Todos</option>
+            <option>Novo</option>
+            <option>Em contato</option>
+            <option>Aguardando confirmação de visita</option>
+            <option>Visita marcada</option>
+            <option>Fechado</option>
+            <option>Perdido</option>
+          </select>
+
+        </div>
+
+
+        <div>
+
+          <label>
+            Busca
+          </label>
+
+          <input
+            id="fBusca"
+            oninput="carregar()"
+            placeholder="Nome ou intenção"
+          >
+
+        </div>
+
+      </div>
+
+
+      <div id="lista"></div>
+
+    </div>
+
+  </div>
+
+
+  <script>
+
+    let ctx = null;
+
+
+    (async () => {
+
+      ctx =
+        await renderNav(
+          "leads"
+        );
+
+
+      if (
+        !ctx?.company
+      ) {
+
+        return;
+
+      }
+
+
+      /*
+      SE FOR CORRETOR:
+      NÃO MOSTRA CRIAÇÃO DE LEAD
+      */
+
+
+      if (
+        !ctx.isOwner
+      ) {
+
+        document
+          .getElementById(
+            "novoLeadBox"
+          )
+          .classList
+          .add(
+            "hidden"
+          );
+
+
+        document
+          .getElementById(
+            "sub"
+          )
+          .textContent =
+          "Acompanhe os leads atribuídos a você.";
+
+      }
+
+
+      const p =
+        new URLSearchParams(
+          location.search
+        );
+
+
+      if (
+        p.get("temp")
+      ) {
+
+        document
+          .getElementById(
+            "fTemp"
+          )
+          .value =
+          p.get("temp");
+
+      }
+
+
+      carregar();
+
+    })();
+
+
+
+    async function analisar() {
+
+      if (
+        !ctx.isOwner
+      ) {
+
+        alert(
+          "Somente o administrador pode criar novos leads."
+        );
+
+        return;
+
+      }
+
+
+      const campoMensagem =
+        document.getElementById(
+          "mensagem"
+        );
+
+
+      if (
+        !campoMensagem.value.trim()
+      ) {
+
+        return;
+
+      }
+
+
+      const botao =
+        document.getElementById(
+          "btn"
+        );
+
+
+      botao.disabled =
+        true;
+
+
+      botao.textContent =
+        "Analisando...";
+
+
+      const {
+        data: props
+      } =
+        await supabaseClient
+          .from(
+            "properties"
+          )
+          .select("*")
+          .eq(
+            "company_id",
+            ctx.company.id
+          );
+
+
+      const resposta =
+        await fetch(
+          "/api/analisar",
+          {
+
+            method:
+              "POST",
+
+            headers:
+              await authHeaders(),
+
+            body:
+              JSON.stringify({
+
+                nome:
+                  document
+                    .getElementById(
+                      "nome"
+                    )
+                    .value
+                    .trim() ||
+                  "Cliente",
+
+                mensagem:
+                  campoMensagem
+                    .value
+                    .trim(),
+
+                empresa:
+                  ctx.company,
+
+                imoveis:
+                  props || []
+
+              })
+
+          }
+        );
+
+
+      const dados =
+        await resposta.json();
+
+
+      botao.disabled =
+        false;
+
+
+      botao.textContent =
+        "🤖 Analisar cliente";
+
+
+      if (
+        !resposta.ok
+      ) {
+
+        document
+          .getElementById(
+            "resultado"
+          )
+          .innerHTML = `
+
+<div class="list-item danger">
+
+${esc(
+  dados.erro ||
+  "Erro ao analisar lead."
+)}
+
+</div>
+
+`;
+
+        return;
+
+      }
+
+
+      document
+        .getElementById(
+          "resultado"
+        )
+        .innerHTML = `
+
+<div class="list-item">
+
+<div class="${normalizar(
+  dados.status
+)}">
+
+${esc(
+  dados.status
+)}
+
+</div>
+
+<p>
+
+${esc(
+  dados.intencao
+)}
+
+</p>
+
+</div>
+
+`;
+
+
+      const {
+        error
+      } =
+        await supabaseClient
+          .from(
+            "leads"
+          )
+          .insert({
+
+            company_id:
+              ctx.company.id,
+
+            name:
+              document
+                .getElementById(
+                  "nome"
+                )
+                .value
+                .trim() ||
+              "Cliente",
+
+            original_message:
+              campoMensagem
+                .value
+                .trim(),
+
+            temperature:
+              dados.status,
+
+            intent:
+              dados.intencao,
+
+            suggested_reply:
+              dados.resposta,
+
+            next_step:
+              dados.proximoPasso,
+
+            status:
+              "Novo",
+
+            match_count:
+              dados
+                .imoveisCompativeis
+                ?.length ||
+              0,
+
+            matches:
+              dados
+                .imoveisCompativeis ||
+              [],
+
+            last_activity_at:
+              new Date()
+                .toISOString()
+
+          });
+
+
+      if (
+        error
+      ) {
+
+        alert(
+          error.message
+        );
+
+        return;
+
+      }
+
+
+      document
+        .getElementById(
+          "nome"
+        )
+        .value = "";
+
+
+      campoMensagem.value =
+        "";
+
+
+      carregar();
+
+    }
+
+
+
+    async function carregar() {
+
+      let q =
+        supabaseClient
+          .from(
+            "leads"
+          )
+          .select("*")
+          .eq(
+            "company_id",
+            ctx.company.id
+          )
+          .order(
+            "created_at",
+            {
+              ascending:
+                false
+            }
+          );
+
+
+      const temp =
+        document
+          .getElementById(
+            "fTemp"
+          )
+          .value;
+
+
+      const status =
+        document
+          .getElementById(
+            "fStatus"
+          )
+          .value;
+
+
+      if (
+        temp !==
+        "Todos"
+      ) {
+
+        q =
+          q.eq(
+            "temperature",
+            temp
+          );
+
+      }
+
+
+      if (
+        status !==
+        "Todos"
+      ) {
+
+        q =
+          q.eq(
+            "status",
+            status
+          );
+
+      }
+
+
+      const {
+        data,
+        error
+      } =
+        await q;
+
+
+      if (
+        error
+      ) {
+
+        document
+          .getElementById(
+            "lista"
+          )
+          .innerHTML = `
+
+<p class="danger">
+
+${esc(
+  error.message
+)}
+
+</p>
+
+`;
+
+        return;
+
+      }
+
+
+      const termo =
+        document
+          .getElementById(
+            "fBusca"
+          )
+          .value
+          .trim()
+          .toLowerCase();
+
+
+      const leads =
+        (data || [])
+          .filter(
+            lead =>
+
+              !termo ||
+
+              [
+                lead.name,
+                lead.intent
+              ]
+
+                .some(
+                  valor =>
+                    String(
+                      valor || ""
+                    )
+                      .toLowerCase()
+                      .includes(
+                        termo
+                      )
+                )
+
+          );
+
+
+      document
+        .getElementById(
+          "lista"
+        )
+        .innerHTML =
+        leads
+          .map(
+            lead => `
+
+<a
+class="list-item"
+href="lead.html?id=${lead.id}"
+style="
+display:block;
+text-decoration:none;
+"
+>
+
+<div class="row">
+
+<div>
+
+<strong>
+
+${esc(
+  lead.name
+)}
+
+</strong>
+
+
+<div class="${normalizar(
+  lead.temperature
+)}">
+
+${esc(
+  lead.temperature
+)}
+
+</div>
+
+</div>
+
+
+<span class="badge">
+
+${esc(
+  lead.status
+)}
+
+</span>
+
+</div>
+
+
+<p
+class="muted small"
+style="margin-top:8px"
+>
+
+${esc(
+  lead.intent || ""
+)}
+
+</p>
+
+</a>
+
+`
+          )
+          .join("") ||
+
+        '<p class="muted">Nenhum lead.</p>';
+
+    }
+
+  </script>
+
+</body>
+
+</html>
