@@ -94,27 +94,29 @@ Use apenas para dados de teste ou leads que realmente devem ser removidos.
 </div>
 
 <script>
-const id=new URLSearchParams(location.search).get("id");
-let lead=null;
-let ctx=null;
+const id = new URLSearchParams(location.search).get("id");
+let lead = null;
+let ctx = null;
+
+const el = (id) => document.getElementById(id);
 
 (async()=>{
-  ctx=await renderNav("leads");
+  ctx = await renderNav("leads");
   if(!ctx?.company) return;
 
   if(ctx.isOwner){
     await carregarEquipe();
   }else{
-    responsavelBox.classList.add("hidden");
-    vendaBox.classList.add("hidden");
-    zonaRisco.classList.add("hidden");
-    limparBtn.classList.add("hidden");
+    el("responsavelBox").classList.add("hidden");
+    el("vendaBox").classList.add("hidden");
+    el("zonaRisco").classList.add("hidden");
+    el("limparBtn").classList.add("hidden");
 
-    const fechado=[...status.options].find(o=>o.value==="Fechado");
+    const fechado = [...el("status").options].find(o=>o.value==="Fechado");
     if(fechado) fechado.remove();
   }
 
-  const {data,error}=await supabaseClient
+  const {data,error} = await supabaseClient
     .from("leads")
     .select("*")
     .eq("id",id)
@@ -123,61 +125,62 @@ let ctx=null;
 
   if(error || !data){
     alert(ctx.isOwner ? "Lead não encontrado." : "Este lead não está atribuído a você.");
-    location.href="leads.html";
+    location.href = "leads.html";
     return;
   }
 
-  lead=data;
+  lead = data;
   render();
 })();
 
 async function carregarEquipe(){
-  responsavel.innerHTML='<option value="">Sem responsável</option>';
+  const campo = el("responsavel");
+  campo.innerHTML = '<option value="">Sem responsável</option>';
 
-  const {data:membros,error}=await supabaseClient
+  const {data:membros,error} = await supabaseClient
     .from("company_members")
     .select("user_id")
     .eq("company_id",ctx.company.id);
 
   if(error) return;
 
-  for(const membro of membros||[]){
-    const {data:perfil}=await supabaseClient
+  for(const membro of membros || []){
+    const {data:perfil} = await supabaseClient
       .from("profiles")
       .select("id,email,full_name")
       .eq("id",membro.user_id)
       .maybeSingle();
 
-    const option=document.createElement("option");
-    option.value=membro.user_id;
-    option.textContent=perfil?.full_name || perfil?.email || "Corretor";
-    responsavel.appendChild(option);
+    const option = document.createElement("option");
+    option.value = membro.user_id;
+    option.textContent = perfil?.full_name || perfil?.email || "Corretor";
+    campo.appendChild(option);
   }
 }
 
 function atualizarVendaBox(){
   if(!ctx?.isOwner) return;
-  vendaBox.classList.toggle("hidden", status.value!=="Fechado");
+  el("vendaBox").classList.toggle("hidden", el("status").value !== "Fechado");
 }
 
 function render(){
-  titulo.textContent=lead.name||"Cliente";
-  sub.textContent=lead.original_message||"";
-  status.value=lead.status||"Novo";
-  notes.value=lead.notes||"";
+  el("titulo").textContent = lead.name || "Cliente";
+  el("sub").textContent = lead.original_message || "";
+  el("status").value = lead.status || "Novo";
+  el("notes").value = lead.notes || "";
 
   if(ctx.isOwner){
-    responsavel.value=lead.assigned_to||"";
-    valorVenda.value=lead.sale_value||"";
+    el("responsavel").value = lead.assigned_to || "";
+    el("valorVenda").value = lead.sale_value || "";
     atualizarVendaBox();
   }
 
-  confirmarVisita.classList.toggle(
+  el("confirmarVisita").classList.toggle(
     "hidden",
-    lead.status!=="Aguardando confirmação de visita"
+    lead.status !== "Aguardando confirmação de visita"
   );
 
-  analise.innerHTML=`
+  el("analise").innerHTML = `
     <p><strong>Temperatura:</strong>
       <span class="${normalizar(lead.temperature)}">${esc(lead.temperature)}</span>
     </p>
@@ -190,33 +193,33 @@ function render(){
 }
 
 async function salvar(){
-  const novoStatus=status.value;
+  const novoStatus = el("status").value;
 
-  if(ctx.isOwner && novoStatus==="Fechado"){
-    const valor=Number(valorVenda.value||0);
+  if(ctx.isOwner && novoStatus === "Fechado"){
+    const valor = Number(el("valorVenda").value || 0);
 
-    if(valor<=0){
+    if(valor <= 0){
       alert("Informe o valor da venda antes de marcar o lead como Fechado.");
       return;
     }
   }
 
-  const payload={
-    status:novoStatus,
-    notes:notes.value.trim(),
-    last_activity_at:new Date().toISOString()
+  const payload = {
+    status: novoStatus,
+    notes: el("notes").value.trim(),
+    last_activity_at: new Date().toISOString()
   };
 
   if(ctx.isOwner){
-    payload.assigned_to=responsavel.value||null;
+    payload.assigned_to = el("responsavel").value || null;
 
-    if(novoStatus==="Fechado"){
-      payload.sale_value=Number(valorVenda.value);
-      payload.closed_at=new Date().toISOString();
+    if(novoStatus === "Fechado"){
+      payload.sale_value = Number(el("valorVenda").value);
+      payload.closed_at = new Date().toISOString();
     }
   }
 
-  const {error}=await supabaseClient
+  const {error} = await supabaseClient
     .from("leads")
     .update(payload)
     .eq("id",id);
@@ -229,25 +232,23 @@ async function salvar(){
   Object.assign(lead,payload);
   render();
 
-  if(novoStatus==="Fechado"){
-    alert("✅ Venda concluída registrada.");
-  }else{
-    alert("✅ Alterações salvas.");
-  }
+  alert(novoStatus === "Fechado"
+    ? "✅ Venda concluída registrada."
+    : "✅ Alterações salvas.");
 }
 
 async function confirmar(){
   if(!confirm("Confirmar que a imobiliária verificou e a visita está marcada?"))
     return;
 
-  const payload={
+  const payload = {
     status:"Visita marcada",
     visit_confirmed_at:new Date().toISOString(),
     next_step:"Realizar a visita e acompanhar o interesse do cliente.",
     last_activity_at:new Date().toISOString()
   };
 
-  const {error}=await supabaseClient
+  const {error} = await supabaseClient
     .from("leads")
     .update(payload)
     .eq("id",id);
@@ -263,54 +264,60 @@ async function confirmar(){
 }
 
 async function carregarMsgs(){
-  const {data,error}=await supabaseClient
+  const {data,error} = await supabaseClient
     .from("messages")
     .select("*")
     .eq("lead_id",id)
     .order("created_at");
 
   if(error){
-    chat.innerHTML=`<p class="danger">${esc(error.message)}</p>`;
+    el("chat").innerHTML = `<p class="danger">${esc(error.message)}</p>`;
     return;
   }
 
-  chat.innerHTML=(data||[]).map(m=>`
+  el("chat").innerHTML = (data||[]).map(m=>`
     <div class="msg ${m.role==="user"?"user":"ai"}">${esc(m.content)}</div>
   `).join("");
 
-  chat.scrollTop=chat.scrollHeight;
+  el("chat").scrollTop = el("chat").scrollHeight;
 }
 
 async function continuar(){
-  const texto=nova.value.trim();
+  const texto = el("nova").value.trim();
   if(!texto) return;
 
-  btnChat.disabled=true;
-  btnChat.textContent="Analisando...";
+  if(texto.length > 4000){
+    alert("Mensagem muito longa.");
+    return;
+  }
 
-  const ins=await supabaseClient
+  const botao = el("btnChat");
+  botao.disabled = true;
+  botao.textContent = "Analisando...";
+
+  const ins = await supabaseClient
     .from("messages")
     .insert({lead_id:id,role:"user",content:texto});
 
   if(ins.error){
     alert(ins.error.message);
-    btnChat.disabled=false;
-    btnChat.textContent="Continuar conversa com IA";
+    botao.disabled = false;
+    botao.textContent = "Continuar conversa com IA";
     return;
   }
 
-  const {data:msgs}=await supabaseClient
+  const {data:msgs} = await supabaseClient
     .from("messages")
     .select("*")
     .eq("lead_id",id)
     .order("created_at");
 
-  const {data:props}=await supabaseClient
+  const {data:props} = await supabaseClient
     .from("properties")
     .select("*")
     .eq("company_id",ctx.company.id);
 
-  const resposta=await fetch("/api/conversar",{
+  const resposta = await fetch("/api/conversar",{
     method:"POST",
     headers:await authHeaders(),
     body:JSON.stringify({
@@ -321,12 +328,12 @@ async function continuar(){
     })
   });
 
-  const dados=await resposta.json();
+  const dados = await resposta.json();
 
   if(!resposta.ok){
-    alert(dados.erro||"Erro ao conversar com a IA.");
-    btnChat.disabled=false;
-    btnChat.textContent="Continuar conversa com IA";
+    alert(dados.erro || "Erro ao conversar com a IA.");
+    botao.disabled = false;
+    botao.textContent = "Continuar conversa com IA";
     return;
   }
 
@@ -334,15 +341,15 @@ async function continuar(){
     .from("messages")
     .insert({lead_id:id,role:"assistant",content:dados.resposta});
 
-  let novoStatus=lead.status;
+  let novoStatus = lead.status;
 
-  if(dados.solicitouVisita && lead.status!=="Visita marcada")
-    novoStatus="Aguardando confirmação de visita";
+  if(dados.solicitouVisita && lead.status !== "Visita marcada")
+    novoStatus = "Aguardando confirmação de visita";
 
-  if(novoStatus==="Novo" && !dados.solicitouVisita)
-    novoStatus="Em contato";
+  if(novoStatus === "Novo" && !dados.solicitouVisita)
+    novoStatus = "Em contato";
 
-  const payload={
+  const payload = {
     temperature:dados.status,
     intent:dados.intencao,
     next_step:dados.proximoPasso,
@@ -353,22 +360,22 @@ async function continuar(){
     last_activity_at:new Date().toISOString()
   };
 
-  const {error}=await supabaseClient
+  const {error} = await supabaseClient
     .from("leads")
     .update(payload)
     .eq("id",id);
 
   if(error){
     alert(error.message);
-    btnChat.disabled=false;
-    btnChat.textContent="Continuar conversa com IA";
+    botao.disabled = false;
+    botao.textContent = "Continuar conversa com IA";
     return;
   }
 
   Object.assign(lead,payload);
-  nova.value="";
-  btnChat.disabled=false;
-  btnChat.textContent="Continuar conversa com IA";
+  el("nova").value = "";
+  botao.disabled = false;
+  botao.textContent = "Continuar conversa com IA";
   render();
 }
 
@@ -376,7 +383,7 @@ async function limparConversa(){
   if(!ctx.isOwner) return;
   if(!confirm("Apagar todas as mensagens desta conversa?")) return;
 
-  const {error}=await supabaseClient
+  const {error} = await supabaseClient
     .from("messages")
     .delete()
     .eq("lead_id",id);
@@ -393,7 +400,7 @@ async function excluirLead(){
   if(!ctx.isOwner) return;
   if(!confirm("Excluir este lead e toda a conversa?")) return;
 
-  const {error}=await supabaseClient
+  const {error} = await supabaseClient
     .from("leads")
     .delete()
     .eq("id",id);
@@ -403,7 +410,7 @@ async function excluirLead(){
     return;
   }
 
-  location.href="leads.html";
+  location.href = "leads.html";
 }
 </script>
 </body>
