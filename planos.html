@@ -1,1 +1,70 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>VendaAI - Planos</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js"></script><script src="app.js"></script></head><body><div id="nav"></div><div class="container"><h1>Planos</h1><p class="sub">Cobrança visual preparada.</p><div class="grid-3"><div class="card"><h2>Teste</h2><h3 style="margin:12px 0">Grátis</h3><p class="muted">20 análises</p></div><div class="card"><h2>Starter</h2><h3 style="margin:12px 0">R$ 149/mês</h3><p class="muted">300 análises</p></div><div class="card"><h2>Pro</h2><h3 style="margin:12px 0">R$ 399/mês</h3><p class="muted">2.000 análises</p></div></div><div class="notice" style="margin-top:20px">Cobrança real ainda não está ligada. Como tu tem 15 anos, essa etapa precisa ser feita com um responsável legal.</div></div><script>document.getElementById('nav').innerHTML=nav('planos');requireAuth()</script></body></html>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VendaAI - Planos</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</head>
+<body>
+<div id="nav"></div>
+
+<div class="container">
+<h1>Planos</h1>
+<p class="sub">Mensalidade + taxa de sucesso somente quando houver venda concluída.</p>
+
+<div class="grid-3">
+
+<div class="card">
+<h3>Teste grátis</h3>
+<p class="muted" style="margin:10px 0">Para conhecer o VendaAI.</p>
+<strong>R$ 0</strong>
+<p class="muted small" style="margin-top:12px">3 usos de IA no total</p>
+<p class="muted small">Sem cobrança automática</p>
+<p class="muted small">Sem taxa de sucesso no teste</p>
+</div>
+
+<div class="card">
+<h3>Starter</h3>
+<p class="muted" style="margin:10px 0">Para imobiliárias pequenas.</p>
+<strong>R$ 149/mês</strong>
+<p class="muted small" style="margin-top:12px">+ R$ 299 por venda concluída</p>
+<p class="muted small">300 usos de IA/mês</p>
+<p class="muted small">Até 3 usuários</p>
+<p class="muted small">Até 500 imóveis</p>
+<p class="muted small">Até 2.000 leads</p>
+</div>
+
+<div class="card">
+<h3>Pro</h3>
+<p class="muted" style="margin:10px 0">Para equipes com maior volume.</p>
+<strong>R$ 349/mês</strong>
+<p class="muted small" style="margin-top:12px">+ R$ 199 por venda concluída</p>
+<p class="muted small">1.500 usos de IA/mês</p>
+<p class="muted small">Até 8 usuários</p>
+<p class="muted small">Até 2.000 imóveis</p>
+<p class="muted small">Até 10.000 leads</p>
+</div>
+
+</div>
+
+<div class="notice" style="margin-top:20px">
+A taxa de sucesso é registrada somente quando o administrador marca o lead como <strong>Fechado</strong> e informa o valor da venda.
+</div>
+
+<div class="notice" style="margin-top:12px">
+Cobrança automática ainda não está ativada. Durante o beta, os planos podem ser alterados manualmente.
+</div>
+</div>
+
+<script>
+(async()=>{
+  const ctx=await renderNav("configuracoes");
+  requireOwner(ctx);
+})();
+</script>
+</body>
+</html>

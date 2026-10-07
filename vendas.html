@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VendaAI - Vendas</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</head>
+<body>
+<div id="nav"></div>
+
+<div class="container">
+<h1>Vendas concluídas</h1>
+<p class="sub">Histórico de vendas e taxas de sucesso registradas.</p>
+
+<div class="grid-3">
+<div class="card metric">
+<p>Vendas concluídas</p>
+<strong id="qtd">0</strong>
+</div>
+
+<div class="card metric">
+<p>Valor vendido</p>
+<strong id="totalVendido">R$ 0,00</strong>
+</div>
+
+<div class="card metric">
+<p>Taxas a receber</p>
+<strong id="taxas">R$ 0,00</strong>
+</div>
+</div>
+
+<div class="box" style="margin-top:20px">
+<h2>Histórico</h2>
+<div id="lista"></div>
+</div>
+</div>
+
+<script>
+(async()=>{
+  const ctx=await renderNav("vendas");
+  if(!requireOwner(ctx)) return;
+
+  const {data,error}=await supabaseClient
+    .from("sales")
+    .select("*")
+    .eq("company_id",ctx.company.id)
+    .eq("status","active")
+    .order("closed_at",{ascending:false});
+
+  if(error){
+    lista.innerHTML=`<p class="danger">${esc(error.message)}</p>`;
+    return;
+  }
+
+  const vendas=data||[];
+
+  qtd.textContent=vendas.length;
+  totalVendido.textContent=dinheiro(
+    vendas.reduce((s,v)=>s+Number(v.sale_value||0),0)
+  );
+  taxas.textContent=dinheiro(
+    vendas.reduce((s,v)=>s+Number(v.success_fee||0),0)
+  );
+
+  lista.innerHTML=vendas.map(v=>`
+    <div class="list-item">
+      <div class="row">
+        <div>
+          <strong>${esc(v.lead_name||"Venda")}</strong>
+          <p class="muted small" style="margin-top:5px">
+            ${esc(v.plan_snapshot||"")} • ${dataBR(v.closed_at)}
+          </p>
+        </div>
+        <div style="text-align:right">
+          <strong>${dinheiro(v.sale_value)}</strong>
+          <p class="muted small">Taxa: ${dinheiro(v.success_fee)}</p>
+        </div>
+      </div>
+    </div>
+  `).join("") || '<p class="muted">Nenhuma venda concluída registrada.</p>';
+})();
+</script>
+</body>
+</html>

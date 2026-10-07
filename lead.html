@@ -3,38 +3,27 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-
 <title>VendaAI - Lead</title>
-
 <link rel="stylesheet" href="styles.css">
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="app.js"></script>
 </head>
-
 <body>
-
 <div id="nav"></div>
 
 <div class="container">
-
 <a href="leads.html" class="muted">← Voltar</a>
-
 <h1 id="titulo" style="margin-top:12px">Lead</h1>
-
 <p id="sub" class="sub"></p>
-
 
 <div class="grid-2">
 
 <div class="box">
-
 <h2>Ficha comercial</h2>
 
 <label>Status</label>
-
-<select id="status">
+<select id="status" onchange="atualizarVendaBox()">
 <option>Novo</option>
 <option>Em contato</option>
 <option>Aguardando confirmação de visita</option>
@@ -43,864 +32,379 @@
 <option>Perdido</option>
 </select>
 
-
+<div id="responsavelBox">
 <label>Responsável</label>
-
 <select id="responsavel">
 <option value="">Sem responsável</option>
 </select>
+</div>
 
+<div id="vendaBox" class="hidden">
+<label>Valor da venda</label>
+<input id="valorVenda" type="number" min="0" step="0.01" placeholder="Ex.: 450000">
+<p class="muted small" style="margin-top:-8px;margin-bottom:12px">
+Ao salvar como Fechado, a taxa de sucesso será registrada automaticamente conforme o plano.
+</p>
+</div>
 
 <label>Observações</label>
-
 <textarea id="notes"></textarea>
 
-
-<button
-class="btn-full"
-onclick="salvar()"
->
-Salvar alterações
-</button>
-
+<button class="btn-full" onclick="salvar()">Salvar alterações</button>
 
 <button
 id="confirmarVisita"
 class="btn-full btn-success hidden"
 style="margin-top:10px"
-onclick="confirmar()"
->
+onclick="confirmar()">
 ✅ Confirmar visita
 </button>
-
 </div>
 
-
 <div class="box">
-
 <h2>Análise da IA</h2>
-
 <div id="analise"></div>
-
 </div>
-
 </div>
-
 
 <div class="box">
-
 <div class="row">
-
 <h2>💬 Conversa</h2>
-
-<button
-class="btn-danger"
-onclick="limparConversa()"
->
-Limpar conversa
-</button>
-
+<button id="limparBtn" class="btn-danger" onclick="limparConversa()">Limpar conversa</button>
 </div>
 
-
-<div
-id="chat"
-class="chat"
-></div>
-
-
+<div id="chat" class="chat"></div>
 <div class="divider"></div>
 
+<textarea id="nova" maxlength="4000" placeholder="Nova mensagem do cliente..."></textarea>
 
-<textarea
-id="nova"
-placeholder="Nova mensagem do cliente..."
-></textarea>
-
-
-<button
-id="btnChat"
-class="btn-full"
-onclick="continuar()"
->
+<button id="btnChat" class="btn-full" onclick="continuar()">
 Continuar conversa com IA
 </button>
-
 </div>
 
-
-<div class="box">
-
+<div class="box" id="zonaRisco">
 <h2>Zona de risco</h2>
-
-<p
-class="muted"
-style="margin-bottom:12px"
->
+<p class="muted" style="margin-bottom:12px">
 Use apenas para dados de teste ou leads que realmente devem ser removidos.
 </p>
 
-<button
-class="btn-danger"
-onclick="excluirLead()"
->
-Excluir este lead
-</button>
-
+<button class="btn-danger" onclick="excluirLead()">Excluir este lead</button>
 </div>
-
 </div>
-
 
 <script>
+const id=new URLSearchParams(location.search).get("id");
+let lead=null;
+let ctx=null;
 
-document.getElementById("nav").innerHTML =
-nav("leads");
+(async()=>{
+  ctx=await renderNav("leads");
+  if(!ctx?.company) return;
 
+  if(ctx.isOwner){
+    await carregarEquipe();
+  }else{
+    responsavelBox.classList.add("hidden");
+    vendaBox.classList.add("hidden");
+    zonaRisco.classList.add("hidden");
+    limparBtn.classList.add("hidden");
 
-const id =
-new URLSearchParams(
-location.search
-).get("id");
+    const fechado=[...status.options].find(o=>o.value==="Fechado");
+    if(fechado) fechado.remove();
+  }
 
+  const {data,error}=await supabaseClient
+    .from("leads")
+    .select("*")
+    .eq("id",id)
+    .eq("company_id",ctx.company.id)
+    .single();
 
-let lead = null;
-let company = null;
+  if(error || !data){
+    alert(ctx.isOwner ? "Lead não encontrado." : "Este lead não está atribuído a você.");
+    location.href="leads.html";
+    return;
+  }
 
-
-
-(async () => {
-
-await requireAuth();
-
-company =
-await currentCompany();
-
-
-if (!company) {
-
-location.href =
-"empresa.html";
-
-return;
-
-}
-
-
-await carregarEquipe();
-
-
-const { data, error } =
-await supabaseClient
-.from("leads")
-.select("*")
-.eq("id", id)
-.eq("company_id", company.id)
-.single();
-
-
-if (error || !data) {
-
-alert("Lead não encontrado.");
-
-location.href =
-"leads.html";
-
-return;
-
-}
-
-
-lead = data;
-
-render();
-
+  lead=data;
+  render();
 })();
 
+async function carregarEquipe(){
+  responsavel.innerHTML='<option value="">Sem responsável</option>';
 
+  const {data:membros,error}=await supabaseClient
+    .from("company_members")
+    .select("user_id")
+    .eq("company_id",ctx.company.id);
 
-async function carregarEquipe() {
+  if(error) return;
 
-const campo =
-document.getElementById(
-"responsavel"
-);
+  for(const membro of membros||[]){
+    const {data:perfil}=await supabaseClient
+      .from("profiles")
+      .select("id,email,full_name")
+      .eq("id",membro.user_id)
+      .maybeSingle();
 
-
-campo.innerHTML = `
-<option value="">
-Sem responsável
-</option>
-`;
-
-
-const { data: membros, error } =
-await supabaseClient
-.from("company_members")
-.select("user_id")
-.eq(
-"company_id",
-company.id
-);
-
-
-if (error) {
-
-console.error(error);
-
-return;
-
+    const option=document.createElement("option");
+    option.value=membro.user_id;
+    option.textContent=perfil?.full_name || perfil?.email || "Corretor";
+    responsavel.appendChild(option);
+  }
 }
 
-
-for (const membro of membros || []) {
-
-const { data: perfil } =
-await supabaseClient
-.from("profiles")
-.select(
-"id,email,full_name"
-)
-.eq(
-"id",
-membro.user_id
-)
-.maybeSingle();
-
-
-const option =
-document.createElement(
-"option"
-);
-
-
-option.value =
-membro.user_id;
-
-
-option.textContent =
-perfil?.full_name ||
-perfil?.email ||
-"Corretor";
-
-
-campo.appendChild(
-option
-);
-
+function atualizarVendaBox(){
+  if(!ctx?.isOwner) return;
+  vendaBox.classList.toggle("hidden", status.value!=="Fechado");
 }
 
+function render(){
+  titulo.textContent=lead.name||"Cliente";
+  sub.textContent=lead.original_message||"";
+  status.value=lead.status||"Novo";
+  notes.value=lead.notes||"";
+
+  if(ctx.isOwner){
+    responsavel.value=lead.assigned_to||"";
+    valorVenda.value=lead.sale_value||"";
+    atualizarVendaBox();
+  }
+
+  confirmarVisita.classList.toggle(
+    "hidden",
+    lead.status!=="Aguardando confirmação de visita"
+  );
+
+  analise.innerHTML=`
+    <p><strong>Temperatura:</strong>
+      <span class="${normalizar(lead.temperature)}">${esc(lead.temperature)}</span>
+    </p>
+    <p style="margin-top:8px"><strong>Intenção:</strong> ${esc(lead.intent||"")}</p>
+    <p style="margin-top:8px"><strong>Resposta sugerida:</strong> ${esc(lead.suggested_reply||"")}</p>
+    <p style="margin-top:8px"><strong>Próximo passo:</strong> ${esc(lead.next_step||"")}</p>
+  `;
+
+  carregarMsgs();
 }
 
+async function salvar(){
+  const novoStatus=status.value;
 
+  if(ctx.isOwner && novoStatus==="Fechado"){
+    const valor=Number(valorVenda.value||0);
 
-function render() {
+    if(valor<=0){
+      alert("Informe o valor da venda antes de marcar o lead como Fechado.");
+      return;
+    }
+  }
 
-document.getElementById(
-"titulo"
-).textContent =
-lead.name || "Cliente";
+  const payload={
+    status:novoStatus,
+    notes:notes.value.trim(),
+    last_activity_at:new Date().toISOString()
+  };
 
+  if(ctx.isOwner){
+    payload.assigned_to=responsavel.value||null;
 
-document.getElementById(
-"sub"
-).textContent =
-lead.original_message || "";
+    if(novoStatus==="Fechado"){
+      payload.sale_value=Number(valorVenda.value);
+      payload.closed_at=new Date().toISOString();
+    }
+  }
 
+  const {error}=await supabaseClient
+    .from("leads")
+    .update(payload)
+    .eq("id",id);
 
-document.getElementById(
-"status"
-).value =
-lead.status || "Novo";
+  if(error){
+    alert(error.message);
+    return;
+  }
 
+  Object.assign(lead,payload);
+  render();
 
-document.getElementById(
-"notes"
-).value =
-lead.notes || "";
-
-
-document.getElementById(
-"responsavel"
-).value =
-lead.assigned_to || "";
-
-
-document.getElementById(
-"confirmarVisita"
-).classList.toggle(
-"hidden",
-lead.status !==
-"Aguardando confirmação de visita"
-);
-
-
-document.getElementById(
-"analise"
-).innerHTML = `
-
-<p>
-
-<strong>
-Temperatura:
-</strong>
-
-<span class="${normalizar(
-lead.temperature
-)}">
-
-${esc(
-lead.temperature
-)}
-
-</span>
-
-</p>
-
-
-<p style="margin-top:8px">
-
-<strong>
-Intenção:
-</strong>
-
-${esc(
-lead.intent || ""
-)}
-
-</p>
-
-
-<p style="margin-top:8px">
-
-<strong>
-Resposta sugerida:
-</strong>
-
-${esc(
-lead.suggested_reply || ""
-)}
-
-</p>
-
-
-<p style="margin-top:8px">
-
-<strong>
-Próximo passo:
-</strong>
-
-${esc(
-lead.next_step || ""
-)}
-
-</p>
-
-`;
-
-
-carregarMsgs();
-
+  if(novoStatus==="Fechado"){
+    alert("✅ Venda concluída registrada.");
+  }else{
+    alert("✅ Alterações salvas.");
+  }
 }
 
+async function confirmar(){
+  if(!confirm("Confirmar que a imobiliária verificou e a visita está marcada?"))
+    return;
 
+  const payload={
+    status:"Visita marcada",
+    visit_confirmed_at:new Date().toISOString(),
+    next_step:"Realizar a visita e acompanhar o interesse do cliente.",
+    last_activity_at:new Date().toISOString()
+  };
 
-async function salvar() {
+  const {error}=await supabaseClient
+    .from("leads")
+    .update(payload)
+    .eq("id",id);
 
-const novoStatus =
-document.getElementById(
-"status"
-).value;
+  if(error){
+    alert(error.message);
+    return;
+  }
 
-
-const novasNotas =
-document.getElementById(
-"notes"
-).value.trim();
-
-
-const novoResponsavel =
-document.getElementById(
-"responsavel"
-).value || null;
-
-
-const { error } =
-await supabaseClient
-.from("leads")
-.update({
-
-status:
-novoStatus,
-
-notes:
-novasNotas,
-
-assigned_to:
-novoResponsavel,
-
-last_activity_at:
-new Date().toISOString()
-
-})
-.eq(
-"id",
-id
-);
-
-
-if (error) {
-
-alert(error.message);
-
-return;
-
+  Object.assign(lead,payload);
+  render();
+  alert("✅ Visita marcada.");
 }
 
+async function carregarMsgs(){
+  const {data,error}=await supabaseClient
+    .from("messages")
+    .select("*")
+    .eq("lead_id",id)
+    .order("created_at");
 
-lead.status =
-novoStatus;
+  if(error){
+    chat.innerHTML=`<p class="danger">${esc(error.message)}</p>`;
+    return;
+  }
 
-lead.notes =
-novasNotas;
+  chat.innerHTML=(data||[]).map(m=>`
+    <div class="msg ${m.role==="user"?"user":"ai"}">${esc(m.content)}</div>
+  `).join("");
 
-lead.assigned_to =
-novoResponsavel;
-
-
-render();
-
-
-alert("✅ Alterações salvas.");
-
+  chat.scrollTop=chat.scrollHeight;
 }
 
+async function continuar(){
+  const texto=nova.value.trim();
+  if(!texto) return;
 
+  btnChat.disabled=true;
+  btnChat.textContent="Analisando...";
 
-async function confirmar() {
+  const ins=await supabaseClient
+    .from("messages")
+    .insert({lead_id:id,role:"user",content:texto});
 
-if (
-!confirm(
-"Confirmar que a imobiliária verificou e a visita está marcada?"
-)
-) {
+  if(ins.error){
+    alert(ins.error.message);
+    btnChat.disabled=false;
+    btnChat.textContent="Continuar conversa com IA";
+    return;
+  }
 
-return;
+  const {data:msgs}=await supabaseClient
+    .from("messages")
+    .select("*")
+    .eq("lead_id",id)
+    .order("created_at");
 
+  const {data:props}=await supabaseClient
+    .from("properties")
+    .select("*")
+    .eq("company_id",ctx.company.id);
+
+  const resposta=await fetch("/api/conversar",{
+    method:"POST",
+    headers:await authHeaders(),
+    body:JSON.stringify({
+      lead,
+      empresa:ctx.company,
+      imoveis:props||[],
+      mensagens:msgs||[]
+    })
+  });
+
+  const dados=await resposta.json();
+
+  if(!resposta.ok){
+    alert(dados.erro||"Erro ao conversar com a IA.");
+    btnChat.disabled=false;
+    btnChat.textContent="Continuar conversa com IA";
+    return;
+  }
+
+  await supabaseClient
+    .from("messages")
+    .insert({lead_id:id,role:"assistant",content:dados.resposta});
+
+  let novoStatus=lead.status;
+
+  if(dados.solicitouVisita && lead.status!=="Visita marcada")
+    novoStatus="Aguardando confirmação de visita";
+
+  if(novoStatus==="Novo" && !dados.solicitouVisita)
+    novoStatus="Em contato";
+
+  const payload={
+    temperature:dados.status,
+    intent:dados.intencao,
+    next_step:dados.proximoPasso,
+    suggested_reply:dados.resposta,
+    match_count:dados.imoveisCompativeis?.length||0,
+    matches:dados.imoveisCompativeis||[],
+    status:novoStatus,
+    last_activity_at:new Date().toISOString()
+  };
+
+  const {error}=await supabaseClient
+    .from("leads")
+    .update(payload)
+    .eq("id",id);
+
+  if(error){
+    alert(error.message);
+    btnChat.disabled=false;
+    btnChat.textContent="Continuar conversa com IA";
+    return;
+  }
+
+  Object.assign(lead,payload);
+  nova.value="";
+  btnChat.disabled=false;
+  btnChat.textContent="Continuar conversa com IA";
+  render();
 }
 
+async function limparConversa(){
+  if(!ctx.isOwner) return;
+  if(!confirm("Apagar todas as mensagens desta conversa?")) return;
 
-const { error } =
-await supabaseClient
-.from("leads")
-.update({
+  const {error}=await supabaseClient
+    .from("messages")
+    .delete()
+    .eq("lead_id",id);
 
-status:
-"Visita marcada",
+  if(error){
+    alert(error.message);
+    return;
+  }
 
-visit_confirmed_at:
-new Date().toISOString(),
-
-next_step:
-"Realizar a visita e acompanhar o interesse do cliente.",
-
-last_activity_at:
-new Date().toISOString()
-
-})
-.eq(
-"id",
-id
-);
-
-
-if (error) {
-
-alert(error.message);
-
-return;
-
+  carregarMsgs();
 }
 
+async function excluirLead(){
+  if(!ctx.isOwner) return;
+  if(!confirm("Excluir este lead e toda a conversa?")) return;
 
-lead.status =
-"Visita marcada";
+  const {error}=await supabaseClient
+    .from("leads")
+    .delete()
+    .eq("id",id);
 
+  if(error){
+    alert(error.message);
+    return;
+  }
 
-lead.next_step =
-"Realizar a visita e acompanhar o interesse do cliente.";
-
-
-render();
-
-
-alert("✅ Visita marcada.");
-
+  location.href="leads.html";
 }
-
-
-
-async function carregarMsgs() {
-
-const { data } =
-await supabaseClient
-.from("messages")
-.select("*")
-.eq(
-"lead_id",
-id
-)
-.order(
-"created_at"
-);
-
-
-const area =
-document.getElementById(
-"chat"
-);
-
-
-area.innerHTML =
-(data || [])
-.map(
-m => `
-
-<div class="msg ${
-m.role === "user"
-? "user"
-: "ai"
-}">
-
-${esc(
-m.content
-)}
-
-</div>
-
-`
-)
-.join("");
-
-
-area.scrollTop =
-area.scrollHeight;
-
-}
-
-
-
-async function continuar() {
-
-const texto =
-document.getElementById(
-"nova"
-).value.trim();
-
-
-if (!texto) {
-return;
-}
-
-
-const botao =
-document.getElementById(
-"btnChat"
-);
-
-
-botao.disabled =
-true;
-
-
-botao.textContent =
-"Analisando...";
-
-
-await supabaseClient
-.from("messages")
-.insert({
-
-lead_id:
-id,
-
-role:
-"user",
-
-content:
-texto
-
-});
-
-
-const { data: msgs } =
-await supabaseClient
-.from("messages")
-.select("*")
-.eq(
-"lead_id",
-id
-)
-.order(
-"created_at"
-);
-
-
-const { data: props } =
-await supabaseClient
-.from("properties")
-.select("*")
-.eq(
-"company_id",
-company.id
-);
-
-
-const resposta =
-await fetch(
-"/api/conversar",
-{
-
-method:
-"POST",
-
-headers: {
-
-"Content-Type":
-"application/json"
-
-},
-
-body:
-JSON.stringify({
-
-lead,
-
-empresa:
-company,
-
-imoveis:
-props || [],
-
-mensagens:
-msgs || []
-
-})
-
-}
-);
-
-
-const dados =
-await resposta.json();
-
-
-if (!resposta.ok) {
-
-alert(
-dados.erro ||
-"Erro ao conversar com a IA."
-);
-
-botao.disabled =
-false;
-
-botao.textContent =
-"Continuar conversa com IA";
-
-return;
-
-}
-
-
-await supabaseClient
-.from("messages")
-.insert({
-
-lead_id:
-id,
-
-role:
-"assistant",
-
-content:
-dados.resposta
-
-});
-
-
-let novoStatus =
-lead.status;
-
-
-if (
-dados.solicitouVisita &&
-lead.status !==
-"Visita marcada"
-) {
-
-novoStatus =
-"Aguardando confirmação de visita";
-
-}
-
-
-if (
-novoStatus === "Novo" &&
-!dados.solicitouVisita
-) {
-
-novoStatus =
-"Em contato";
-
-}
-
-
-await supabaseClient
-.from("leads")
-.update({
-
-temperature:
-dados.status,
-
-intent:
-dados.intencao,
-
-next_step:
-dados.proximoPasso,
-
-suggested_reply:
-dados.resposta,
-
-match_count:
-dados.imoveisCompativeis?.length || 0,
-
-matches:
-dados.imoveisCompativeis || [],
-
-status:
-novoStatus,
-
-last_activity_at:
-new Date().toISOString()
-
-})
-.eq(
-"id",
-id
-);
-
-
-lead.temperature =
-dados.status;
-
-lead.intent =
-dados.intencao;
-
-lead.next_step =
-dados.proximoPasso;
-
-lead.suggested_reply =
-dados.resposta;
-
-lead.status =
-novoStatus;
-
-
-document.getElementById(
-"nova"
-).value = "";
-
-
-botao.disabled =
-false;
-
-botao.textContent =
-"Continuar conversa com IA";
-
-
-render();
-
-}
-
-
-
-async function limparConversa() {
-
-if (
-!confirm(
-"Apagar todas as mensagens desta conversa?"
-)
-) {
-
-return;
-
-}
-
-
-const { error } =
-await supabaseClient
-.from("messages")
-.delete()
-.eq(
-"lead_id",
-id
-);
-
-
-if (error) {
-
-alert(error.message);
-
-return;
-
-}
-
-
-carregarMsgs();
-
-}
-
-
-
-async function excluirLead() {
-
-if (
-!confirm(
-"Excluir este lead e toda a conversa?"
-)
-) {
-
-return;
-
-}
-
-
-const { error } =
-await supabaseClient
-.from("leads")
-.delete()
-.eq(
-"id",
-id
-);
-
-
-if (error) {
-
-alert(error.message);
-
-return;
-
-}
-
-
-location.href =
-"leads.html";
-
-}
-
 </script>
-
 </body>
 </html>
