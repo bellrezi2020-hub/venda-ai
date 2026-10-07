@@ -1,1 +1,441 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>VendaAI - Dashboard</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js"></script><script src="app.js"></script></head><body><div id="nav"></div><div class="container"><h1>Dashboard</h1><p class="sub">Visão geral da operação comercial.</p><div class="grid-4"><div class="card metric"><p>Total de leads</p><strong id="total">0</strong></div><div class="card metric"><p>🔥 Quentes</p><strong id="quentes">0</strong></div><div class="card metric"><p>⏳ Pendências</p><strong id="pend">0</strong></div><div class="card metric"><p>🏠 Imóveis</p><strong id="imoveis">0</strong></div></div><div class="grid-3" style="margin-top:18px"><div class="card metric"><p>🎯 Com match</p><strong id="matches">0</strong></div><div class="card metric"><p>📅 Aguardando visita</p><strong id="aguardando">0</strong></div><div class="card metric"><p>✅ Fechados</p><strong id="fechados">0</strong></div></div><div class="box" style="margin-top:20px"><h2>Últimos leads</h2><div id="ultimos"></div></div></div><script>document.getElementById('nav').innerHTML=nav('dashboard');(async()=>{await requireAuth();const c=await currentCompany();if(!c)return;const {data:ls}=await supabaseClient.from('leads').select('*').eq('company_id',c.id).order('created_at',{ascending:false});const {count:ic}=await supabaseClient.from('properties').select('*',{count:'exact',head:true}).eq('company_id',c.id);const a=ls||[];total.textContent=a.length;quentes.textContent=a.filter(x=>x.temperature==='Quente').length;pend.textContent=a.filter(x=>['Novo','Em contato','Aguardando confirmação de visita'].includes(x.status)).length;imoveis.textContent=ic||0;matches.textContent=a.filter(x=>x.match_count>0).length;aguardando.textContent=a.filter(x=>x.status==='Aguardando confirmação de visita').length;fechados.textContent=a.filter(x=>x.status==='Fechado').length;ultimos.innerHTML=a.slice(0,5).map(l=>`<a class="list-item" href="lead.html?id=${l.id}" style="display:block;text-decoration:none"><div class="row"><strong>${esc(l.name)}</strong><span class="badge">${esc(l.status)}</span></div><p class="muted small" style="margin-top:6px">${esc(l.intent||'')}</p></a>`).join('')||'<p class="muted">Nenhum lead.</p>'})()</script></body></html>
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+
+  <title>VendaAI - Dashboard</title>
+
+  <link rel="stylesheet" href="styles.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</head>
+
+<body>
+
+  <div id="nav"></div>
+
+  <div class="container">
+
+    <h1>Dashboard</h1>
+
+    <p
+      class="sub"
+      id="sub"
+    >
+      Visão geral da operação comercial.
+    </p>
+
+
+    <div class="grid-4">
+
+      <div class="card metric">
+
+        <p>
+          Total de leads
+        </p>
+
+        <strong id="total">
+          0
+        </strong>
+
+      </div>
+
+
+      <div class="card metric">
+
+        <p>
+          🔥 Quentes
+        </p>
+
+        <strong id="quentes">
+          0
+        </strong>
+
+      </div>
+
+
+      <div class="card metric">
+
+        <p>
+          ⏳ Pendências
+        </p>
+
+        <strong id="pend">
+          0
+        </strong>
+
+      </div>
+
+
+      <div
+        class="card metric"
+        id="imovelCard"
+      >
+
+        <p>
+          🏠 Imóveis
+        </p>
+
+        <strong id="imoveis">
+          0
+        </strong>
+
+      </div>
+
+    </div>
+
+
+    <div
+      class="grid-3"
+      style="margin-top:18px"
+    >
+
+      <div class="card metric">
+
+        <p>
+          🎯 Com match
+        </p>
+
+        <strong id="matches">
+          0
+        </strong>
+
+      </div>
+
+
+      <div class="card metric">
+
+        <p>
+          📅 Aguardando visita
+        </p>
+
+        <strong id="aguardando">
+          0
+        </strong>
+
+      </div>
+
+
+      <div class="card metric">
+
+        <p>
+          ✅ Fechados
+        </p>
+
+        <strong id="fechados">
+          0
+        </strong>
+
+      </div>
+
+    </div>
+
+
+    <div
+      class="box"
+      style="margin-top:20px"
+    >
+
+      <h2>
+        Últimos leads
+      </h2>
+
+      <div id="ultimos"></div>
+
+    </div>
+
+  </div>
+
+
+  <script>
+
+    (async () => {
+
+      const ctx =
+        await renderNav(
+          "dashboard"
+        );
+
+
+      if (
+        !ctx?.company
+      ) {
+
+        return;
+
+      }
+
+
+      /*
+      CORRETOR
+      */
+
+
+      if (
+        !ctx.isOwner
+      ) {
+
+        document
+          .getElementById(
+            "sub"
+          )
+          .textContent =
+          "Seus leads atribuídos e pendências.";
+
+
+        document
+          .getElementById(
+            "imovelCard"
+          )
+          .classList
+          .add(
+            "hidden"
+          );
+
+      }
+
+
+      /*
+      LEADS
+      */
+
+
+      const {
+        data: ls,
+        error
+      } =
+        await supabaseClient
+          .from(
+            "leads"
+          )
+          .select("*")
+          .eq(
+            "company_id",
+            ctx.company.id
+          )
+          .order(
+            "created_at",
+            {
+              ascending:
+                false
+            }
+          );
+
+
+      if (
+        error
+      ) {
+
+        alert(
+          error.message
+        );
+
+        return;
+
+      }
+
+
+      /*
+      IMÓVEIS
+      SOMENTE ADMIN
+      */
+
+
+      let ic = 0;
+
+
+      if (
+        ctx.isOwner
+      ) {
+
+        const r =
+          await supabaseClient
+            .from(
+              "properties"
+            )
+            .select(
+              "*",
+              {
+                count:
+                  "exact",
+                head:
+                  true
+              }
+            )
+            .eq(
+              "company_id",
+              ctx.company.id
+            );
+
+
+        ic =
+          r.count ||
+          0;
+
+      }
+
+
+      const a =
+        ls || [];
+
+
+      /*
+      MÉTRICAS
+      */
+
+
+      document
+        .getElementById(
+          "total"
+        )
+        .textContent =
+        a.length;
+
+
+      document
+        .getElementById(
+          "quentes"
+        )
+        .textContent =
+        a.filter(
+          x =>
+            x.temperature ===
+            "Quente"
+        ).length;
+
+
+      document
+        .getElementById(
+          "pend"
+        )
+        .textContent =
+        a.filter(
+          x =>
+            [
+              "Novo",
+              "Em contato",
+              "Aguardando confirmação de visita"
+            ]
+            .includes(
+              x.status
+            )
+        ).length;
+
+
+      document
+        .getElementById(
+          "imoveis"
+        )
+        .textContent =
+        ic;
+
+
+      document
+        .getElementById(
+          "matches"
+        )
+        .textContent =
+        a.filter(
+          x =>
+            x.match_count >
+            0
+        ).length;
+
+
+      document
+        .getElementById(
+          "aguardando"
+        )
+        .textContent =
+        a.filter(
+          x =>
+            x.status ===
+            "Aguardando confirmação de visita"
+        ).length;
+
+
+      document
+        .getElementById(
+          "fechados"
+        )
+        .textContent =
+        a.filter(
+          x =>
+            x.status ===
+            "Fechado"
+        ).length;
+
+
+      /*
+      ÚLTIMOS LEADS
+      */
+
+
+      document
+        .getElementById(
+          "ultimos"
+        )
+        .innerHTML =
+        a
+          .slice(
+            0,
+            5
+          )
+          .map(
+            l => `
+
+<a
+class="list-item"
+href="lead.html?id=${l.id}"
+style="
+display:block;
+text-decoration:none;
+"
+>
+
+<div class="row">
+
+<strong>
+${esc(
+  l.name
+)}
+</strong>
+
+<span class="badge">
+${esc(
+  l.status
+)}
+</span>
+
+</div>
+
+<p
+class="muted small"
+style="margin-top:6px"
+>
+
+${esc(
+  l.intent || ""
+)}
+
+</p>
+
+</a>
+
+`
+          )
+          .join("") ||
+
+        '<p class="muted">Nenhum lead.</p>';
+
+    })();
+
+  </script>
+
+</body>
+
+</html>
