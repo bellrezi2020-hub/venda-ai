@@ -16,8 +16,9 @@
 <h1>Planos</h1>
 <p class="sub">Mensalidade + taxa de sucesso somente quando houver venda concluída.</p>
 
-<div class="grid-3">
+<div id="planoAtual" class="notice" style="margin-bottom:20px">Carregando plano atual...</div>
 
+<div class="grid-3">
 <div class="card">
 <h3>Teste grátis</h3>
 <p class="muted" style="margin:10px 0">Para conhecer o VendaAI.</p>
@@ -48,11 +49,10 @@
 <p class="muted small">Até 2.000 imóveis</p>
 <p class="muted small">Até 10.000 leads</p>
 </div>
-
 </div>
 
 <div class="notice" style="margin-top:20px">
-A taxa de sucesso é registrada somente quando o administrador marca o lead como <strong>Fechado</strong> e informa o valor da venda.
+A taxa de sucesso fica registrada no momento em que a venda é fechada e não muda se o plano for alterado depois.
 </div>
 
 <div class="notice" style="margin-top:12px">
@@ -63,7 +63,50 @@ Cobrança automática ainda não está ativada. Durante o beta, os planos podem 
 <script>
 (async()=>{
   const ctx=await renderNav("configuracoes");
-  requireOwner(ctx);
+  if(!ctx || !requireOwner(ctx)) return;
+
+  const {data:lim,error}=await supabaseClient
+    .from("company_limits")
+    .select("*")
+    .eq("company_id",ctx.company.id)
+    .maybeSingle();
+
+  if(error){
+    document.getElementById("planoAtual").textContent=error.message;
+    return;
+  }
+
+  if(!lim){
+    document.getElementById("planoAtual").textContent="Plano atual: teste grátis.";
+    return;
+  }
+
+  const plan=String(lim.plan||"trial").toLowerCase();
+
+  if(plan==="dev"){
+    document.getElementById("planoAtual").innerHTML=
+      "<strong>Ambiente de desenvolvimento</strong> — limites ampliados para testes internos. Não é um plano comercial.";
+    return;
+  }
+
+  const nomes={trial:"Teste grátis",starter:"Starter",pro:"Pro"};
+  const month=new Date().toISOString().slice(0,7);
+
+  let q=supabaseClient
+    .from("ai_usage")
+    .select("requests")
+    .eq("company_id",ctx.company.id);
+
+  if(plan!=="trial") q=q.eq("month",month);
+
+  const {data:usage}=await q;
+  const used=(usage||[]).reduce((s,x)=>s+Number(x.requests||0),0);
+  const limit=plan==="trial"?3:Number(lim.monthly_ai_limit||0);
+
+  document.getElementById("planoAtual").innerHTML=
+    `<strong>Plano atual: ${esc(nomes[plan]||plan)}</strong><br>`+
+    `IA utilizada: ${used} / ${limit} • `+
+    `Usuários: até ${lim.max_members} • Imóveis: até ${lim.max_properties} • Leads: até ${lim.max_leads}`;
 })();
 </script>
 </body>
