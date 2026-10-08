@@ -1,1 +1,73 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>VendaAI - Empresa</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js"></script><script src="app.js"></script></head><body><div id="nav"></div><div class="container"><h1>Empresa</h1><p class="sub">Informações usadas pela IA.</p><div class="box"><label>Nome</label><input id="nome"><label>Região</label><input id="regiao"><label>Diferenciais</label><textarea id="diferenciais"></textarea><label>Observações</label><textarea id="observacoes"></textarea><button class="btn-full" onclick="salvar()">💾 Salvar</button><p id="msg" class="success small" style="margin-top:10px"></p></div></div><script>document.getElementById('nav').innerHTML=nav('empresa');let u,c;(async()=>{u=await requireAuth();c=await currentCompany();if(c){nome.value=c.name||'';regiao.value=c.region||'';diferenciais.value=c.differentials||'';observacoes.value=c.notes||''}})();async function salvar(){const p={owner_id:u.id,name:nome.value.trim(),region:regiao.value.trim(),differentials:diferenciais.value.trim(),notes:observacoes.value.trim()};const q=c?supabaseClient.from('companies').update(p).eq('id',c.id):supabaseClient.from('companies').insert(p);const {error}=await q;msg.textContent=error?error.message:'✅ Salvo.';if(!error)c=await currentCompany()}</script></body></html>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VendaAI - Empresa</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</head>
+<body>
+<div id="nav"></div>
+<div class="container">
+<h1>Empresa</h1>
+<p class="sub">Informações usadas pela IA.</p>
+
+<div class="box">
+<label>Nome</label>
+<input id="nome">
+
+<label>Região</label>
+<input id="regiao">
+
+<label>Diferenciais</label>
+<textarea id="diferenciais"></textarea>
+
+<label>Observações</label>
+<textarea id="observacoes"></textarea>
+
+<button class="btn-full" onclick="salvar()">💾 Salvar</button>
+<p id="msg" class="success small" style="margin-top:10px"></p>
+</div>
+</div>
+
+<script>
+let ctx = null;
+
+(async()=>{
+  ctx = await renderNav("empresa");
+  if(!ctx || !requireOwner(ctx)) return;
+
+  const c = ctx.company;
+  if(!c) return;
+
+  document.getElementById("nome").value = c.name || "";
+  document.getElementById("regiao").value = c.region || "";
+  document.getElementById("diferenciais").value = c.differentials || "";
+  document.getElementById("observacoes").value = c.notes || "";
+})();
+
+async function salvar(){
+  if(!ctx?.isOwner) return;
+
+  const p = {
+    name: document.getElementById("nome").value.trim(),
+    region: document.getElementById("regiao").value.trim(),
+    differentials: document.getElementById("diferenciais").value.trim(),
+    notes: document.getElementById("observacoes").value.trim()
+  };
+
+  const {error} = await supabaseClient
+    .from("companies")
+    .update(p)
+    .eq("id", ctx.company.id)
+    .eq("owner_id", ctx.user.id);
+
+  document.getElementById("msg").textContent =
+    error ? error.message : "✅ Salvo.";
+}
+</script>
+</body>
+</html>

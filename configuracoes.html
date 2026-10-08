@@ -1,10 +1,131 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>VendaAI - Configurações</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js"></script><script src="app.js"></script></head>
-<body><div id="nav"></div><div class="container"><h1>Configurações</h1><p class="sub">Backup e limpeza de dados de teste.</p>
-<div class="grid-2"><div class="box"><h2>Exportar dados</h2><p class="muted" style="margin:10px 0 16px">Baixa empresa, imóveis, leads e mensagens em JSON.</p><button class="btn-full" onclick="exportar()">⬇️ Exportar JSON</button></div>
-<div class="box"><h2>Limpar testes</h2><p class="muted" style="margin:10px 0 16px">Apaga leads e conversas, preservando empresa e imóveis.</p><button class="btn-full btn-danger" onclick="limparLeads()">Apagar todos os leads</button></div></div>
-<div class="box"><h2>Documentos</h2><a class="btn btn-secondary" href="privacidade.html" target="_blank">Privacidade</a> <a class="btn btn-secondary" href="termos.html" target="_blank">Termos</a> <a class="btn btn-secondary" href="landing.html" target="_blank">Landing page</a></div></div>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VendaAI - Configurações</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</head>
+<body>
+<div id="nav"></div>
+
+<div class="container">
+<h1>Configurações</h1>
+<p class="sub">Backup e limpeza de dados de teste.</p>
+
+<div class="grid-2">
+<div class="box">
+<h2>Exportar dados</h2>
+<p class="muted" style="margin:10px 0 16px">Baixa empresa, imóveis, leads e mensagens em JSON.</p>
+<button class="btn-full" onclick="exportar()">⬇️ Exportar JSON</button>
+</div>
+
+<div class="box">
+<h2>Limpar testes</h2>
+<p class="muted" style="margin:10px 0 16px">Apaga leads e conversas, preservando empresa e imóveis.</p>
+<button class="btn-full btn-danger" onclick="limparLeads()">Apagar todos os leads</button>
+</div>
+</div>
+
+<div class="box">
+<h2>Documentos</h2>
+<a class="btn btn-secondary" href="privacidade.html" target="_blank">Privacidade</a>
+<a class="btn btn-secondary" href="termos.html" target="_blank">Termos</a>
+<a class="btn btn-secondary" href="landing.html" target="_blank">Landing page</a>
+<a class="btn btn-secondary" href="planos.html" target="_blank">Planos</a>
+</div>
+</div>
+
 <script>
-document.getElementById("nav").innerHTML=nav("configuracoes");let c;(async()=>{await requireAuth();c=await currentCompany()})();
-async function exportar(){const [{data:p},{data:l}]=await Promise.all([supabaseClient.from("properties").select("*").eq("company_id",c.id),supabaseClient.from("leads").select("*").eq("company_id",c.id)]);const ids=(l||[]).map(x=>x.id);let msgs=[];if(ids.length){const r=await supabaseClient.from("messages").select("*").in("lead_id",ids);msgs=r.data||[]}const payload={empresa:c,imoveis:p||[],leads:l||[],mensagens:msgs,exportado_em:new Date().toISOString()};const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="vendaai-backup.json";a.click();URL.revokeObjectURL(a.href)}
-async function limparLeads(){if(!confirm("Apagar TODOS os leads e conversas? Empresa e imóveis serão mantidos."))return;const {data:l}=await supabaseClient.from("leads").select("id").eq("company_id",c.id);const ids=(l||[]).map(x=>x.id);if(ids.length)await supabaseClient.from("messages").delete().in("lead_id",ids);await supabaseClient.from("leads").delete().eq("company_id",c.id);alert("Leads apagados.")}
-</script></body></html>
+let ctx=null;
+
+(async()=>{
+  ctx=await renderNav("configuracoes");
+  if(!ctx || !requireOwner(ctx)) return;
+})();
+
+async function exportar(){
+  if(!ctx?.isOwner) return;
+
+  const [{data:p,error:ep},{data:l,error:el}]=await Promise.all([
+    supabaseClient.from("properties").select("*").eq("company_id",ctx.company.id),
+    supabaseClient.from("leads").select("*").eq("company_id",ctx.company.id)
+  ]);
+
+  if(ep || el){
+    alert(ep?.message || el?.message || "Erro ao exportar.");
+    return;
+  }
+
+  const ids=(l||[]).map(x=>x.id);
+  let msgs=[];
+
+  if(ids.length){
+    const r=await supabaseClient.from("messages").select("*").in("lead_id",ids);
+    if(r.error){
+      alert(r.error.message);
+      return;
+    }
+    msgs=r.data||[];
+  }
+
+  const payload={
+    empresa:ctx.company,
+    imoveis:p||[],
+    leads:l||[],
+    mensagens:msgs,
+    exportado_em:new Date().toISOString()
+  };
+
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="vendaai-backup.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+async function limparLeads(){
+  if(!ctx?.isOwner) return;
+
+  if(!confirm("Apagar TODOS os leads e conversas? Empresa e imóveis serão mantidos."))
+    return;
+
+  const {data:l,error}=await supabaseClient
+    .from("leads")
+    .select("id")
+    .eq("company_id",ctx.company.id);
+
+  if(error){
+    alert(error.message);
+    return;
+  }
+
+  const ids=(l||[]).map(x=>x.id);
+
+  if(ids.length){
+    const m=await supabaseClient.from("messages").delete().in("lead_id",ids);
+    if(m.error){
+      alert(m.error.message);
+      return;
+    }
+  }
+
+  const d=await supabaseClient
+    .from("leads")
+    .delete()
+    .eq("company_id",ctx.company.id);
+
+  if(d.error){
+    alert(d.error.message);
+    return;
+  }
+
+  alert("Leads apagados.");
+}
+</script>
+</body>
+</html>

@@ -1,480 +1,168 @@
-
 <!doctype html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>VendaAI - Equipe</title>
-
 <link rel="stylesheet" href="styles.css">
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="app.js"></script>
 </head>
-
 <body>
-
 <div id="nav"></div>
 
 <div class="container">
-
 <h1>Equipe</h1>
-
-<p class="sub">
-Estrutura para corretores e distribuição de leads.
-</p>
-
-<div class="notice" style="margin-bottom:18px">
-Para adicionar usuários com segurança, configure
-<code>SUPABASE_URL</code> e
-<code>SUPABASE_SERVICE_ROLE_KEY</code> na Vercel.
-Nunca coloque a service role no GitHub.
-</div>
-
+<p class="sub">Corretores e distribuição de leads.</p>
 
 <div class="box">
+<label>E-mail de usuário já cadastrado</label>
+<input id="email" type="email" placeholder="corretor@email.com">
 
-<label>
-E-mail de usuário já cadastrado
-</label>
+<label>Nome</label>
+<input id="nome" placeholder="Nome do corretor">
 
-<input
-id="email"
-type="email"
-placeholder="corretor@email.com"
->
-
-
-<label>
-Nome
-</label>
-
-<input
-id="nome"
-placeholder="Nome do corretor"
->
-
-
-<button
-id="btnAdicionar"
-class="btn-full"
-onclick="vincular()"
->
-Adicionar à equipe
-</button>
-
-
-<p
-id="msg"
-class="small muted"
-style="margin-top:10px"
-></p>
-
+<button id="btnAdicionar" class="btn-full" onclick="vincular()">Adicionar à equipe</button>
+<p id="msg" class="small muted" style="margin-top:10px"></p>
 </div>
 
-
 <div class="box">
-
 <div class="row">
-
-<h2>
-Equipe atual
-</h2>
-
-<button
-class="btn-secondary"
-onclick="carregar()"
->
-Atualizar
-</button>
-
+<h2>Equipe atual</h2>
+<button class="btn-secondary" onclick="carregar()">Atualizar</button>
 </div>
-
 <div id="lista"></div>
-
 </div>
-
 </div>
-
 
 <script>
+let ctx = null;
+const el = id => document.getElementById(id);
 
-document.getElementById("nav").innerHTML =
-nav("equipe");
-
-
-let company = null;
-
-
-(async () => {
-
-await requireAuth();
-
-company =
-await currentCompany();
-
-
-if (!company) {
-
-location.href =
-"empresa.html";
-
-return;
-
-}
-
-
-await carregar();
-
+(async()=>{
+  ctx = await renderNav("equipe");
+  if(!ctx || !requireOwner(ctx)) return;
+  await carregar();
 })();
 
+async function vincular(){
+  if(!ctx?.isOwner) return;
 
+  const emailValor = el("email").value.trim();
+  const nomeValor = el("nome").value.trim();
 
-async function vincular() {
+  if(!emailValor){
+    el("msg").textContent="Digite o e-mail do usuário.";
+    return;
+  }
 
-const emailValor =
-document.getElementById(
-"email"
-).value.trim();
+  el("btnAdicionar").disabled=true;
+  el("btnAdicionar").textContent="Adicionando...";
+  el("msg").textContent="";
 
+  try{
+    const resposta=await fetch("/api/add-member",{
+      method:"POST",
+      headers:await authHeaders(),
+      body:JSON.stringify({
+        companyId:ctx.company.id,
+        email:emailValor,
+        fullName:nomeValor
+      })
+    });
 
-const nomeValor =
-document.getElementById(
-"nome"
-).value.trim();
+    const dados=await resposta.json();
 
+    if(!resposta.ok){
+      el("msg").textContent=dados.erro||"Não foi possível adicionar o usuário.";
+      return;
+    }
 
-const mensagem =
-document.getElementById(
-"msg"
-);
-
-
-const botao =
-document.getElementById(
-"btnAdicionar"
-);
-
-
-if (!emailValor) {
-
-mensagem.textContent =
-"Digite o e-mail do usuário.";
-
-return;
-
+    el("msg").textContent="✅ Usuário vinculado.";
+    el("email").value="";
+    el("nome").value="";
+    await carregar();
+  }catch(erro){
+    el("msg").textContent="Erro ao conectar com o servidor.";
+  }finally{
+    el("btnAdicionar").disabled=false;
+    el("btnAdicionar").textContent="Adicionar à equipe";
+  }
 }
 
+async function carregar(){
+  if(!ctx?.isOwner) return;
 
-botao.disabled =
-true;
+  el("lista").innerHTML='<p class="muted">Carregando equipe...</p>';
 
+  const {data:membros,error}=await supabaseClient
+    .from("company_members")
+    .select("id,user_id,role,created_at")
+    .eq("company_id",ctx.company.id)
+    .order("created_at",{ascending:true});
 
-botao.textContent =
-"Adicionando...";
+  if(error){
+    el("lista").innerHTML=`<p class="danger">${esc(error.message)}</p>`;
+    return;
+  }
 
+  if(!membros?.length){
+    el("lista").innerHTML='<p class="muted">Nenhum membro.</p>';
+    return;
+  }
 
-mensagem.textContent =
-"";
+  const usuarios=[];
 
+  for(const membro of membros){
+    const {data:perfil}=await supabaseClient
+      .from("profiles")
+      .select("id,email,full_name")
+      .eq("id",membro.user_id)
+      .maybeSingle();
 
-try {
+    usuarios.push({...membro,perfil:perfil||null});
+  }
 
-const resposta =
-await fetch(
-"/api/add-member",
-{
+  el("lista").innerHTML=usuarios.map(membro=>{
+    const nome=membro.perfil?.full_name||"Sem nome";
+    const email=membro.perfil?.email||"";
 
-method:
-"POST",
-
-headers: {
-"Content-Type":
-"application/json"
-},
-
-body:
-JSON.stringify({
-
-companyId:
-company.id,
-
-email:
-emailValor,
-
-fullName:
-nomeValor
-
-})
-
-}
-);
-
-
-const dados =
-await resposta.json();
-
-
-if (!resposta.ok) {
-
-mensagem.textContent =
-dados.erro ||
-"Não foi possível adicionar o usuário.";
-
-botao.disabled =
-false;
-
-botao.textContent =
-"Adicionar à equipe";
-
-return;
-
+    return `
+      <div class="list-item">
+        <div class="row">
+          <div>
+            <strong>${esc(nome)}</strong>
+            <p class="muted small" style="margin-top:5px">${esc(email)}</p>
+          </div>
+          <div>
+            <span class="badge">${esc(membro.role||"corretor")}</span>
+            <button class="btn-danger" style="margin-left:8px"
+              onclick="removerMembro('${membro.id}')">Remover</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
 }
 
+async function removerMembro(memberId){
+  if(!ctx?.isOwner) return;
+  if(!confirm("Remover este usuário da equipe?")) return;
 
-mensagem.textContent =
-"✅ Usuário vinculado.";
+  const {error}=await supabaseClient
+    .from("company_members")
+    .delete()
+    .eq("id",memberId)
+    .eq("company_id",ctx.company.id);
 
+  if(error){
+    alert(error.message);
+    return;
+  }
 
-document.getElementById(
-"email"
-).value = "";
-
-
-document.getElementById(
-"nome"
-).value = "";
-
-
-await carregar();
-
-
-} catch (erro) {
-
-mensagem.textContent =
-"Erro ao conectar com o servidor.";
-
+  await carregar();
 }
-
-
-botao.disabled =
-false;
-
-
-botao.textContent =
-"Adicionar à equipe";
-
-}
-
-
-
-async function carregar() {
-
-const lista =
-document.getElementById(
-"lista"
-);
-
-
-lista.innerHTML =
-'<p class="muted">Carregando equipe...</p>';
-
-
-const { data: membros, error } =
-await supabaseClient
-.from("company_members")
-.select(`
-id,
-user_id,
-role,
-created_at
-`)
-.eq(
-"company_id",
-company.id
-)
-.order(
-"created_at",
-{
-ascending: true
-}
-);
-
-
-if (error) {
-
-lista.innerHTML = `
-<p class="danger">
-${esc(error.message)}
-</p>
-`;
-
-return;
-
-}
-
-
-if (
-!membros ||
-membros.length === 0
-) {
-
-lista.innerHTML =
-'<p class="muted">Nenhum membro.</p>';
-
-return;
-
-}
-
-
-const usuarios = [];
-
-
-for (
-const membro of membros
-) {
-
-const { data: perfil } =
-await supabaseClient
-.from("profiles")
-.select(
-"id,email,full_name"
-)
-.eq(
-"id",
-membro.user_id
-)
-.maybeSingle();
-
-
-usuarios.push({
-
-...membro,
-
-perfil:
-perfil || null
-
-});
-
-}
-
-
-lista.innerHTML =
-usuarios.map(
-membro => {
-
-const nome =
-membro.perfil?.full_name ||
-"Sem nome";
-
-
-const email =
-membro.perfil?.email ||
-"";
-
-
-return `
-
-<div class="list-item">
-
-<div class="row">
-
-<div>
-
-<strong>
-${esc(nome)}
-</strong>
-
-<p class="muted small"
-style="margin-top:5px">
-
-${esc(email)}
-
-</p>
-
-</div>
-
-
-<div>
-
-<span class="badge">
-
-${esc(
-membro.role ||
-"corretor"
-)}
-
-</span>
-
-<button
-class="btn-danger"
-style="margin-left:8px"
-onclick="removerMembro(
-'${membro.id}'
-)"
->
-
-Remover
-
-</button>
-
-</div>
-
-</div>
-
-</div>
-
-`;
-
-}
-).join("");
-
-}
-
-
-
-async function removerMembro(
-memberId
-) {
-
-if (
-!confirm(
-"Remover este usuário da equipe?"
-)
-) {
-
-return;
-
-}
-
-
-const { error } =
-await supabaseClient
-.from("company_members")
-.delete()
-.eq(
-"id",
-memberId
-);
-
-
-if (error) {
-
-alert(
-error.message
-);
-
-return;
-
-}
-
-
-await carregar();
-
-}
-
 </script>
-
 </body>
 </html>

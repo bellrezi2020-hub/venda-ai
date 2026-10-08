@@ -74,6 +74,16 @@ async function currentCompany() {
   const user = await requireAuth();
   if (!user) return null;
 
+  // Proprietário tem prioridade. Evita um dono cair acidentalmente
+  // na empresa em que também esteja cadastrado como membro.
+  const own = await supabaseClient
+    .from("companies")
+    .select("*")
+    .eq("owner_id", user.id)
+    .maybeSingle();
+
+  if (own.data) return own.data;
+
   const member = await supabaseClient
     .from("company_members")
     .select("company_id")
@@ -91,13 +101,7 @@ async function currentCompany() {
     if (empresaEquipe.data) return empresaEquipe.data;
   }
 
-  const own = await supabaseClient
-    .from("companies")
-    .select("*")
-    .eq("owner_id", user.id)
-    .maybeSingle();
-
-  return own.data || null;
+  return null;
 }
 
 async function accessContext() {
@@ -129,19 +133,13 @@ async function accessContext() {
     role = r.data?.role || "corretor";
   }
 
-  return {
-    user,
-    company,
-    isOwner,
-    role
-  };
+  return { user, company, isOwner, role };
 }
 
 async function logout() {
   if (supabaseClient) {
     await supabaseClient.auth.signOut();
   }
-
   location.href = "login.html";
 }
 
@@ -176,10 +174,7 @@ async function renderNav(active) {
   if (!ctx) return null;
 
   const area = document.getElementById("nav");
-
-  if (area) {
-    area.innerHTML = nav(active, ctx.isOwner);
-  }
+  if (area) area.innerHTML = nav(active, ctx.isOwner);
 
   return ctx;
 }
@@ -190,6 +185,5 @@ function requireOwner(ctx) {
     location.href = "index.html";
     return false;
   }
-
   return true;
 }
