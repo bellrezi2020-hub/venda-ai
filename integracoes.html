@@ -14,19 +14,51 @@
 
 <div class="container">
 <h1>Integrações</h1>
-<p class="sub">Status das integrações externas.</p>
+<p class="sub">Conecte os canais externos do VendaAI.</p>
 
-<div class="grid-3">
-<div class="card">
-<h3>💬 WhatsApp</h3>
-<p class="muted" style="margin:10px 0">Meta WhatsApp Cloud API em preparação.</p>
-<span class="badge">Preparando</span>
+<div class="box">
+<div class="row">
+<div>
+<h2>💬 WhatsApp Cloud API</h2>
+<p class="muted">A estrutura técnica já está pronta. A ativação fica desligada até a Meta liberar a conta.</p>
+</div>
+<span class="badge" id="waBadge">Aguardando</span>
 </div>
 
+<div class="grid-2" style="margin-top:16px">
+<div>
+<label>Phone Number ID</label>
+<input id="phoneNumberId" placeholder="Fornecido pela Meta">
+</div>
+<div>
+<label>WhatsApp Business Account ID (WABA)</label>
+<input id="wabaId" placeholder="Fornecido pela Meta">
+</div>
+</div>
+
+<label>Número exibido</label>
+<input id="displayPhone" placeholder="+55 ...">
+
+<label style="display:flex;align-items:center;gap:8px;margin-top:14px">
+<input id="enabled" type="checkbox" style="width:auto;margin:0">
+Ativar WhatsApp depois que as credenciais estiverem configuradas
+</label>
+
+<button id="saveWa" class="btn-full" onclick="salvarWhatsApp()">Salvar configuração</button>
+<p id="waMsg" class="small muted" style="margin-top:10px"></p>
+
+<div class="notice" style="margin-top:14px">
+<strong>Webhook para cadastrar na Meta:</strong><br>
+<code id="webhookUrl"></code><br><br>
+As chaves secretas ficam somente na Vercel. Nunca coloque token no GitHub.
+</div>
+</div>
+
+<div class="grid-2">
 <div class="card">
 <h3>📅 Google Calendar</h3>
-<p class="muted" style="margin:10px 0">Fluxo de confirmação pronto. Integração real será conectada depois.</p>
-<span class="badge">Preparado</span>
+<p class="muted" style="margin:10px 0">Fluxo de confirmação pronto. A conexão OAuth será feita depois.</p>
+<span class="badge">Próximo</span>
 </div>
 
 <div class="card">
@@ -38,10 +70,96 @@
 </div>
 
 <script>
+let ctx=null;
+const el=id=>document.getElementById(id);
+
 (async()=>{
-  const ctx=await renderNav("integracoes");
+  ctx=await renderNav("integracoes");
   if(!ctx || !requireOwner(ctx)) return;
+
+  el("webhookUrl").textContent =
+    `${location.origin}/api/whatsapp-webhook`;
+
+  await carregarWhatsApp();
 })();
+
+async function carregarWhatsApp(){
+  const r=await fetch(
+    `/api/whatsapp-settings?companyId=${encodeURIComponent(ctx.company.id)}`,
+    {headers:await authHeaders()}
+  );
+
+  const d=await r.json();
+
+  if(!r.ok){
+    el("waMsg").textContent=d.erro||"Não foi possível carregar.";
+    return;
+  }
+
+  const c=d.connection;
+
+  if(c){
+    el("phoneNumberId").value=c.phone_number_id||"";
+    el("wabaId").value=c.waba_id||"";
+    el("displayPhone").value=c.display_phone_number||"";
+    el("enabled").checked=Boolean(c.enabled);
+  }
+
+  const secretsOk =
+    d.server?.accessToken &&
+    d.server?.verifyToken &&
+    d.server?.appSecret &&
+    d.server?.graphVersion;
+
+  if(c?.enabled && secretsOk){
+    el("waBadge").textContent="Ativo";
+    el("waMsg").textContent="✅ WhatsApp configurado.";
+  }else if(c){
+    el("waBadge").textContent="Preparado";
+    el("waMsg").textContent=secretsOk
+      ? "Configuração salva. Marque Ativar quando quiser conectar."
+      : "Configuração salva. Ainda faltam credenciais na Vercel.";
+  }else{
+    el("waBadge").textContent="Aguardando Meta";
+    el("waMsg").textContent="Nenhuma configuração salva ainda.";
+  }
+}
+
+async function salvarWhatsApp(){
+  if(!ctx?.isOwner) return;
+
+  const btn=el("saveWa");
+  btn.disabled=true;
+  btn.textContent="Salvando...";
+  el("waMsg").textContent="";
+
+  try{
+    const r=await fetch("/api/whatsapp-settings",{
+      method:"POST",
+      headers:await authHeaders(),
+      body:JSON.stringify({
+        companyId:ctx.company.id,
+        phoneNumberId:el("phoneNumberId").value.trim(),
+        wabaId:el("wabaId").value.trim(),
+        displayPhoneNumber:el("displayPhone").value.trim(),
+        enabled:el("enabled").checked
+      })
+    });
+
+    const d=await r.json();
+
+    if(!r.ok){
+      el("waMsg").textContent=d.erro||"Não foi possível salvar.";
+      return;
+    }
+
+    el("waMsg").textContent="✅ Configuração salva.";
+    await carregarWhatsApp();
+  }finally{
+    btn.disabled=false;
+    btn.textContent="Salvar configuração";
+  }
+}
 </script>
 </body>
 </html>
