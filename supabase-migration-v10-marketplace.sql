@@ -235,3 +235,61 @@ create policy mp_own_listing_write on marketplace_listings for all using (seller
 
 -- IMPORTANTE: pagamentos, carteira, retenção e saques NÃO devem ser operados diretamente pelo front-end.
 -- Eles precisam de API server-side + provedor de pagamentos/split antes de produção.
+
+
+-- V10 MVP operacional: admin, onboarding e políticas necessárias
+create table if not exists marketplace_admins (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
+-- Semeia o administrador a partir da empresa de desenvolvimento já existente.
+insert into marketplace_admins(user_id)
+select owner_id from companies where id='7a452f2a-d3c2-4f2f-acc1-d3f7b953fc57'
+on conflict (user_id) do nothing;
+
+alter table marketplace_admins enable row level security;
+
+drop policy if exists mp_admin_self_read on marketplace_admins;
+create policy mp_admin_self_read on marketplace_admins for select using (user_id=auth.uid());
+
+create or replace function public.vendaai_is_marketplace_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path=public
+as $$
+  select exists(select 1 from marketplace_admins where user_id=auth.uid());
+$$;
+
+grant execute on function public.vendaai_is_marketplace_admin() to authenticated;
+
+-- Perfil próprio: inserir e atualizar.
+drop policy if exists mp_own_profile_insert on marketplace_profiles;
+create policy mp_own_profile_insert on marketplace_profiles for insert with check (user_id=auth.uid());
+
+-- Favoritos e seguidores próprios.
+drop policy if exists mp_own_favorites on marketplace_favorites;
+create policy mp_own_favorites on marketplace_favorites for all using (user_id=auth.uid()) with check (user_id=auth.uid());
+drop policy if exists mp_own_store_follow on marketplace_store_followers;
+create policy mp_own_store_follow on marketplace_store_followers for all using (user_id=auth.uid()) with check (user_id=auth.uid());
+
+-- Leitura pública dos dados mínimos das lojas/anúncios.
+drop policy if exists mp_public_reviews on marketplace_reviews;
+create policy mp_public_reviews on marketplace_reviews for select using (true);
+
+-- Admin pode revisar anúncios e denúncias.
+drop policy if exists mp_admin_listings on marketplace_listings;
+create policy mp_admin_listings on marketplace_listings for all using (public.vendaai_is_marketplace_admin()) with check (public.vendaai_is_marketplace_admin());
+drop policy if exists mp_admin_reports on marketplace_reports;
+create policy mp_admin_reports on marketplace_reports for all using (public.vendaai_is_marketplace_admin()) with check (public.vendaai_is_marketplace_admin());
+drop policy if exists mp_admin_disputes on marketplace_disputes;
+create policy mp_admin_disputes on marketplace_disputes for all using (public.vendaai_is_marketplace_admin()) with check (public.vendaai_is_marketplace_admin());
+
+-- Usuário autenticado pode criar denúncia.
+drop policy if exists mp_create_report on marketplace_reports;
+create policy mp_create_report on marketplace_reports for insert with check (reporter_id=auth.uid());
+
+-- Vendedor pode ler os próprios anúncios mesmo em revisão (já coberto por select pública + seller_id).
+-- Não ativamos pagamentos/carteira pelo navegador nesta etapa.
