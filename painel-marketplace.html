@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="marketplace.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="marketplace-client.js?v=20261013-1750"></script>
+<script src="marketplace-client.js?v=20261013-1800"></script>
 </head>
 <body>
 <header class="mp-header">
@@ -113,7 +113,7 @@ async function setStatus(id,status){
   try{
     gateEl.textContent='Lendo sua sessão...';
 
-    if(!window.MP) throw new Error('Arquivo marketplace-client.js não carregou.');
+    if(!window.MP) throw new Error('Arquivo marketplace-client.js?v=20261013-1800 não carregou.');
 
     const user=await MP.requireUser('painel-marketplace.html');
     if(!user) return;
