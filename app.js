@@ -159,7 +159,7 @@ function nav(active, isOwner = true) {
 <header>
 <div class="logo">Venda<span>AI</span></div>
 <nav>
-<a href="index.html" class="${active === "dashboard" ? "ativo" : ""}">Dashboard</a>
+<a href="dashboard.html" class="${active === "dashboard" ? "ativo" : ""}">Dashboard</a>
 <a href="leads.html" class="${active === "leads" ? "ativo" : ""}">Leads</a>
 <a href="pendencias.html" class="${active === "pendencias" ? "ativo" : ""}">Pendências</a>
 ${ownerOnly}
@@ -182,7 +182,7 @@ async function renderNav(active) {
 function requireOwner(ctx) {
   if (!ctx?.isOwner) {
     alert("Esta área é exclusiva do administrador.");
-    location.href = "index.html";
+    location.href = "dashboard.html";
     return false;
   }
   return true;
