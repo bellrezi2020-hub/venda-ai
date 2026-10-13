@@ -1,2 +1,137 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Painel Marketplace — VendaAI</title><link rel="stylesheet" href="marketplace.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js"></script><script src="marketplace-client.js?v=20261013-1745"></script></head><body><header class="mp-header"><a class="mp-logo" href="index.html">Venda<span>AI</span></a><nav class="mp-nav"><a href="dashboard.html">CRM</a><a href="marketplace.html">Marketplace</a></nav></header><main class="wrap section"><div class="section-head"><div><h1>Painel Marketplace</h1><div class="muted">Fila real de revisão de anúncios.</div></div></div><div id="gate" class="notice">Verificando acesso...</div><section id="area" class="section hidden"><div class="grid g3"><div class="card"><div class="muted">Em revisão</div><div class="kpi" id="reviewCount">0</div></div><div class="card"><div class="muted">Ativos</div><div class="kpi" id="activeCount">0</div></div><div class="card"><div class="muted">Bloqueados</div><div class="kpi" id="blockedCount">0</div></div></div><section class="section"><div class="card"><h2>Fila de anúncios</h2><div id="queue"></div></div></section></section></main><script>
-(async()=>{try{const u=await MP.requireUser('painel-marketplace.html');if(!u)return;gate.className='notice';gate.textContent='Carregando fila administrativa...';area.classList.remove('hidden');await loadQueue();gate.className='notice ok';gate.textContent='✓ Painel administrativo carregado.'}catch(e){console.error(e);area.classList.add('hidden');gate.className='notice warn';gate.innerHTML='<strong>Não consegui abrir o painel administrativo.</strong><br>'+MP.esc(e?.message||String(e))}}</script><script>async function loadQueue(){const{data,error}=await marketplaceDb.from('marketplace_listings').select('*,marketplace_stores(name)').order('created_at',{ascending:false});if(error) throw error; const a=data||[];reviewCount.textContent=a.filter(x=>x.status==='review').length;activeCount.textContent=a.filter(x=>x.status==='active').length;blockedCount.textContent=a.filter(x=>x.status==='blocked').length;queue.innerHTML=a.filter(x=>x.status==='review').map(x=>'<div class="card" style="margin:10px 0;background:#0d131b"><div class="row"><div><strong>'+MP.esc(x.title)+'</strong><div class="muted">'+MP.esc(x.marketplace_stores?.name||'Vendedor')+' • '+MP.money(x.price)+' • '+MP.esc([x.city,x.state].filter(Boolean).join(' - '))+'</div></div><div><button class="btn success" onclick="setStatus(\''+x.id+'\',\'active\')">Aprovar</button> <button class="btn btn-danger" onclick="setStatus(\''+x.id+'\',\'blocked\')">Bloquear</button></div></div></div>').join('')||'<div class="notice">Nenhum anúncio aguardando revisão.</div>'}async function setStatus(id,status){const{error}=await marketplaceDb.from('marketplace_listings').update({status,updated_at:new Date().toISOString()}).eq('id',id);if(error)return alert(error.message);loadQueue()}</script></body></html>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Painel Marketplace — VendaAI</title>
+<link rel="stylesheet" href="marketplace.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="marketplace-client.js?v=20261013-1750"></script>
+</head>
+<body>
+<header class="mp-header">
+  <a class="mp-logo" href="index.html">Venda<span>AI</span></a>
+  <nav class="mp-nav">
+    <a href="dashboard.html">CRM</a>
+    <a href="marketplace.html">Marketplace</a>
+  </nav>
+</header>
+
+<main class="wrap section">
+  <div class="section-head">
+    <div>
+      <h1>Painel Marketplace</h1>
+      <div class="muted">Fila real de revisão de anúncios.</div>
+    </div>
+  </div>
+
+  <div id="gate" class="notice">Iniciando painel...</div>
+
+  <section id="area" class="section hidden">
+    <div class="grid g3">
+      <div class="card"><div class="muted">Em revisão</div><div class="kpi" id="reviewCount">0</div></div>
+      <div class="card"><div class="muted">Ativos</div><div class="kpi" id="activeCount">0</div></div>
+      <div class="card"><div class="muted">Bloqueados</div><div class="kpi" id="blockedCount">0</div></div>
+    </div>
+
+    <section class="section">
+      <div class="card">
+        <h2>Fila de anúncios</h2>
+        <div id="queue"></div>
+      </div>
+    </section>
+  </section>
+</main>
+
+<script>
+const gateEl = document.getElementById('gate');
+const areaEl = document.getElementById('area');
+const queueEl = document.getElementById('queue');
+const reviewEl = document.getElementById('reviewCount');
+const activeEl = document.getElementById('activeCount');
+const blockedEl = document.getElementById('blockedCount');
+
+function safeText(v){
+  const d=document.createElement('div');
+  d.textContent=v??'';
+  return d.innerHTML;
+}
+
+async function loadQueue(){
+  if(!window.marketplaceDb) throw new Error('Cliente do Supabase não foi carregado.');
+
+  const {data,error}=await marketplaceDb
+    .from('marketplace_listings')
+    .select('*,marketplace_stores(name)')
+    .order('created_at',{ascending:false});
+
+  if(error) throw error;
+
+  const items=data||[];
+  reviewEl.textContent=items.filter(x=>x.status==='review').length;
+  activeEl.textContent=items.filter(x=>x.status==='active').length;
+  blockedEl.textContent=items.filter(x=>x.status==='blocked').length;
+
+  const pending=items.filter(x=>x.status==='review');
+
+  queueEl.innerHTML=pending.map(x=>`
+    <div class="card" style="margin:10px 0;background:#0d131b">
+      <div class="row">
+        <div>
+          <strong>${safeText(x.title)}</strong>
+          <div class="muted">
+            ${safeText(x.marketplace_stores?.name||'Vendedor')} •
+            ${Number(x.price||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})} •
+            ${safeText([x.city,x.state].filter(Boolean).join(' - '))}
+          </div>
+        </div>
+        <div>
+          <button class="btn success" onclick="setStatus('${x.id}','active')">Aprovar</button>
+          <button class="btn btn-danger" onclick="setStatus('${x.id}','blocked')">Bloquear</button>
+        </div>
+      </div>
+    </div>
+  `).join('') || '<div class="notice">Nenhum anúncio aguardando revisão.</div>';
+}
+
+async function setStatus(id,status){
+  const {error}=await marketplaceDb
+    .from('marketplace_listings')
+    .update({status,updated_at:new Date().toISOString()})
+    .eq('id',id);
+
+  if(error){
+    alert(error.message);
+    return;
+  }
+
+  await loadQueue();
+}
+
+(async function init(){
+  try{
+    gateEl.textContent='Lendo sua sessão...';
+
+    if(!window.MP) throw new Error('Arquivo marketplace-client.js não carregou.');
+
+    const user=await MP.requireUser('painel-marketplace.html');
+    if(!user) return;
+
+    gateEl.textContent='Carregando fila administrativa...';
+    areaEl.classList.remove('hidden');
+
+    await loadQueue();
+
+    gateEl.className='notice ok';
+    gateEl.textContent='✓ Painel administrativo carregado.';
+  }catch(err){
+    console.error(err);
+    areaEl.classList.add('hidden');
+    gateEl.className='notice warn';
+    gateEl.innerHTML='<strong>Não consegui abrir o painel.</strong><br>'+safeText(err?.message||String(err));
+  }
+})();
+</script>
+</body>
+</html>
