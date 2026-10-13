@@ -194,3 +194,19 @@ on marketplace_conversations(seller_id,updated_at desc);
 
 create index if not exists mp_messages_conversation_idx
 on marketplace_messages(conversation_id,created_at);
+
+
+-- Vendedor também pode iniciar a conversa a partir de uma proposta recebida.
+drop policy if exists mp_conversation_seller_insert on marketplace_conversations;
+create policy mp_conversation_seller_insert
+on marketplace_conversations
+for insert
+with check (
+  seller_id = auth.uid()
+  and buyer_id <> auth.uid()
+  and exists (
+    select 1 from marketplace_listings l
+    where l.id = marketplace_conversations.listing_id
+      and l.seller_id = auth.uid()
+  )
+);
