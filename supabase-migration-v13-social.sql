@@ -221,3 +221,87 @@ with check (
   buyer_id=auth.uid()
   and status in ('accepted','rejected','cancelled','countered','pending')
 );
+
+
+-- SEGURANÇA DE PROPOSTAS: comprador/vendedor não podem trocar valor original,
+-- comprador, anúncio ou identidades manipulando chamadas pelo navegador.
+create or replace function public.vendaai_guard_offer_update()
+returns trigger
+language plpgsql
+set search_path=public
+as $$
+declare
+  v_seller uuid;
+begin
+  select seller_id into v_seller from marketplace_listings where id=OLD.listing_id;
+
+  if NEW.listing_id is distinct from OLD.listing_id
+     or NEW.buyer_id is distinct from OLD.buyer_id
+     or NEW.amount is distinct from OLD.amount then
+    raise exception 'Campos protegidos da proposta não podem ser alterados.';
+  end if;
+
+  if auth.uid()=OLD.buyer_id then
+    if NEW.counter_amount is distinct from OLD.counter_amount then
+      raise exception 'O comprador não pode alterar a contraproposta do vendedor.';
+    end if;
+
+    if OLD.status='pending' and NEW.status not in ('pending','cancelled') then
+      raise exception 'Transição de proposta não permitida para o comprador.';
+    end if;
+
+    if OLD.status='countered' and NEW.status not in ('countered','accepted','rejected','cancelled') then
+      raise exception 'Resposta à contraproposta inválida.';
+    end if;
+  elsif auth.uid()=v_seller then
+    if OLD.status='pending' and NEW.status not in ('pending','accepted','rejected','countered') then
+      raise exception 'Transição de proposta não permitida para o vendedor.';
+    end if;
+
+    if NEW.status='countered' and (NEW.counter_amount is null or NEW.counter_amount<=0) then
+      raise exception 'Contraproposta inválida.';
+    end if;
+  else
+    raise exception 'Usuário não participa desta proposta.';
+  end if;
+
+  return NEW;
+end;
+$$;
+
+drop trigger if exists trg_mp_guard_offer_update on marketplace_offers;
+create trigger trg_mp_guard_offer_update
+before update on marketplace_offers
+for each row execute function public.vendaai_guard_offer_update();
+
+-- Avaliações somente após proposta aceita entre as partes.
+drop policy if exists mp_review_participant_insert on marketplace_reviews;
+create policy mp_review_participant_insert
+on marketplace_reviews for insert
+with check (
+  reviewer_id=auth.uid()
+  and reviewer_id<>reviewed_user_id
+  and listing_id is not null
+  and exists (
+    select 1
+    from marketplace_conversations c
+    where c.listing_id=marketplace_reviews.listing_id
+      and (
+        (c.buyer_id=auth.uid() and c.seller_id=marketplace_reviews.reviewed_user_id)
+        or
+        (c.seller_id=auth.uid() and c.buyer_id=marketplace_reviews.reviewed_user_id)
+      )
+  )
+  and exists (
+    select 1
+    from marketplace_offers o
+    join marketplace_listings l on l.id=o.listing_id
+    where o.listing_id=marketplace_reviews.listing_id
+      and o.status='accepted'
+      and (
+        (o.buyer_id=auth.uid() and l.seller_id=marketplace_reviews.reviewed_user_id)
+        or
+        (l.seller_id=auth.uid() and o.buyer_id=marketplace_reviews.reviewed_user_id)
+      )
+  )
+);
