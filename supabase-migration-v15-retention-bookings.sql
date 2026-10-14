@@ -267,3 +267,98 @@ for each row execute function public.vendaai_booking_notify();
 
 -- Nome de vitrine também fica protegido contra edição por terceiros;
 -- demais campos de reputação continuam protegidos pela V14.
+
+
+-- Protege os horários contra manipulação direta pelo navegador.
+create or replace function public.vendaai_guard_availability_slot()
+returns trigger
+language plpgsql
+set search_path=public
+as $$
+declare v_admin boolean := public.vendaai_is_marketplace_admin();
+begin
+  if v_admin or pg_trigger_depth()>1 then
+    if TG_OP='DELETE' then return OLD; end if;
+    return NEW;
+  end if;
+
+  if TG_OP='INSERT' then
+    if NEW.seller_id is distinct from auth.uid() then
+      raise exception 'Prestador inválido.';
+    end if;
+    NEW.status := 'available';
+    return NEW;
+  end if;
+
+  if TG_OP='DELETE' then
+    if OLD.status<>'available' then
+      raise exception 'Horário reservado não pode ser removido.';
+    end if;
+    return OLD;
+  end if;
+
+  if NEW.seller_id is distinct from OLD.seller_id
+     or NEW.listing_id is distinct from OLD.listing_id
+     or NEW.status is distinct from OLD.status then
+    raise exception 'Campos protegidos do horário não podem ser alterados.';
+  end if;
+
+  return NEW;
+end;
+$$;
+
+drop trigger if exists trg_mp_guard_availability_slot on marketplace_availability_slots;
+create trigger trg_mp_guard_availability_slot
+before insert or update or delete on marketplace_availability_slots
+for each row execute function public.vendaai_guard_availability_slot();
+
+-- Corrige a notificação de propostas:
+-- vendedor notifica comprador; comprador respondendo contraproposta notifica vendedor.
+create or replace function public.vendaai_offer_notify_update()
+returns trigger
+language plpgsql
+security definer
+set search_path=public
+as $$
+declare
+  v_title text;
+  v_seller uuid;
+  v_target uuid;
+  v_body text;
+begin
+  if NEW.status is distinct from OLD.status
+     or NEW.counter_amount is distinct from OLD.counter_amount then
+
+    select title,seller_id into v_title,v_seller
+    from marketplace_listings where id=NEW.listing_id;
+
+    if auth.uid()=NEW.buyer_id then
+      v_target := v_seller;
+      v_body := case
+        when NEW.status='accepted' then 'O comprador aceitou sua contraproposta.'
+        when NEW.status='rejected' then 'O comprador recusou sua contraproposta.'
+        when NEW.status='cancelled' then 'O comprador cancelou a proposta.'
+        else 'A proposta foi atualizada pelo comprador.'
+      end;
+    else
+      v_target := NEW.buyer_id;
+      v_body := case
+        when NEW.status='accepted' then 'Sua proposta foi aceita.'
+        when NEW.status='rejected' then 'Sua proposta foi recusada.'
+        when NEW.status='countered' then 'Você recebeu uma contraproposta.'
+        else 'Sua proposta foi atualizada.'
+      end;
+    end if;
+
+    if v_target is not null then
+      perform public.vendaai_notify(
+        v_target,'offer_update',coalesce(v_title,'Proposta atualizada'),
+        v_body,
+        case when v_target=v_seller then 'vendedor-painel.html' else 'minhas-negociacoes.html' end
+      );
+    end if;
+  end if;
+
+  return NEW;
+end;
+$$;
