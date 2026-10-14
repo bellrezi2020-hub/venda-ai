@@ -201,3 +201,16 @@ drop trigger if exists trg_mp_refresh_store_rating on marketplace_reviews;
 create trigger trg_mp_refresh_store_rating
 after insert or update or delete on marketplace_reviews
 for each row execute function public.vendaai_refresh_store_rating();
+
+
+-- Comprador pode responder a uma contraproposta e cancelar proposta própria.
+drop policy if exists mp_offer_buyer_cancel on marketplace_offers;
+drop policy if exists mp_offer_buyer_response on marketplace_offers;
+create policy mp_offer_buyer_response
+on marketplace_offers
+for update
+using (buyer_id=auth.uid())
+with check (
+  buyer_id=auth.uid()
+  and status in ('accepted','rejected','cancelled','countered','pending')
+);
