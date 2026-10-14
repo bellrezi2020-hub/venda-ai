@@ -104,6 +104,30 @@ window.MP={
   },
 
   categoryLabel(v){return({products:'Produtos',services:'Serviços',vehicles:'Veículos',real_estate:'Imóveis'})[v]||v},
-  categoryEmoji(v){return({products:'🛍️',services:'🔧',vehicles:'🚗',real_estate:'🏠'})[v]||'🛒'}
+  categoryEmoji(v){return({products:'🛍️',services:'🔧',vehicles:'🚗',real_estate:'🏠'})[v]||'🛒'},
+
+  async unreadCount(){
+    const s=await this.session();
+    if(!s)return 0;
+    const{count,error}=await marketplaceDb.from('marketplace_notifications').select('id',{count:'exact',head:true}).eq('user_id',s.user.id).eq('is_read',false);
+    if(error)return 0;
+    return count||0;
+  }
 };
+
+document.addEventListener('DOMContentLoaded',async()=>{
+  try{
+    const s=await MP.session();
+    if(!s)return;
+    const n=await MP.unreadCount();
+    document.querySelectorAll('a[href*="notificacoes.html"]').forEach(a=>{
+      const base='Notificações';
+      a.textContent=n>0?base+' ('+n+')':base;
+    });
+    document.querySelectorAll('a[href^="login.html"]').forEach(a=>{
+      a.href='perfil.html';
+      a.textContent='Meu perfil';
+    });
+  }catch(e){}
+});
 })();
