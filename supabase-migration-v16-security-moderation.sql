@@ -106,3 +106,104 @@ drop policy if exists mp_admin_bookings on marketplace_bookings;
 create policy mp_admin_bookings
 on marketplace_bookings for select
 using (public.vendaai_is_marketplace_admin());
+
+
+-- Conversas e mensagens também respeitam o estado de risco.
+drop policy if exists mp_conversation_buyer_insert on marketplace_conversations;
+create policy mp_conversation_buyer_insert
+on marketplace_conversations for insert
+with check (
+  buyer_id=auth.uid()
+  and seller_id<>auth.uid()
+  and public.vendaai_account_can_transact(auth.uid())
+  and exists (
+    select 1 from marketplace_listings l
+    where l.id=marketplace_conversations.listing_id
+      and l.seller_id=marketplace_conversations.seller_id
+      and l.status='active'
+  )
+);
+
+drop policy if exists mp_conversation_seller_insert on marketplace_conversations;
+create policy mp_conversation_seller_insert
+on marketplace_conversations for insert
+with check (
+  seller_id=auth.uid()
+  and buyer_id<>auth.uid()
+  and public.vendaai_account_can_transact(auth.uid())
+  and exists (
+    select 1 from marketplace_listings l
+    where l.id=marketplace_conversations.listing_id
+      and l.seller_id=auth.uid()
+  )
+);
+
+drop policy if exists mp_message_insert_participants on marketplace_messages;
+create policy mp_message_insert_participants
+on marketplace_messages for insert
+with check (
+  sender_id=auth.uid()
+  and public.vendaai_account_can_transact(auth.uid())
+  and exists (
+    select 1 from marketplace_conversations c
+    where c.id=marketplace_messages.conversation_id
+      and (c.buyer_id=auth.uid() or c.seller_id=auth.uid())
+  )
+);
+
+drop policy if exists mp_offer_buyer_response on marketplace_offers;
+create policy mp_offer_buyer_response
+on marketplace_offers for update
+using (
+  buyer_id=auth.uid()
+  and public.vendaai_account_can_transact(auth.uid())
+)
+with check (
+  buyer_id=auth.uid()
+  and public.vendaai_account_can_transact(auth.uid())
+  and status in ('accepted','rejected','cancelled','countered','pending')
+);
+
+drop policy if exists mp_offer_seller_update on marketplace_offers;
+create policy mp_offer_seller_update
+on marketplace_offers for update
+using (
+  public.vendaai_account_can_transact(auth.uid())
+  and exists (
+    select 1 from marketplace_listings l
+    where l.id=marketplace_offers.listing_id
+      and l.seller_id=auth.uid()
+  )
+)
+with check (
+  public.vendaai_account_can_transact(auth.uid())
+  and exists (
+    select 1 from marketplace_listings l
+    where l.id=marketplace_offers.listing_id
+      and l.seller_id=auth.uid()
+  )
+);
+
+-- Conta restrita não publica nem edita anúncios.
+create or replace function public.vendaai_block_restricted_listing()
+returns trigger
+language plpgsql
+set search_path=public
+as $$
+begin
+  if public.vendaai_is_marketplace_admin() then
+    return NEW;
+  end if;
+
+  if not public.vendaai_account_can_transact(auth.uid()) then
+    raise exception 'Sua conta está temporariamente restrita para esta ação.';
+  end if;
+
+  return NEW;
+end;
+$$;
+
+drop trigger if exists trg_mp_block_restricted_listing on marketplace_listings;
+create trigger trg_mp_block_restricted_listing
+before insert or update on marketplace_listings
+for each row execute function public.vendaai_block_restricted_listing();
