@@ -84,7 +84,7 @@ as $$
 $$;
 
 revoke all on function public.vendaai_notify(uuid,text,text,text,text) from public;
-grant execute on function public.vendaai_notify(uuid,text,text,text,text) to authenticated;
+revoke all on function public.vendaai_notify(uuid,text,text,text,text) from authenticated;
 
 -- Nova proposta -> notifica vendedor.
 create or replace function public.vendaai_offer_notify_insert()
