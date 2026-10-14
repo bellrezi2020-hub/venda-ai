@@ -12,8 +12,9 @@ with check (public.vendaai_is_marketplace_admin());
 create or replace function public.vendaai_guard_profile_write()
 returns trigger
 language plpgsql
-set search_path=public
-as $$
+security definer
+set search_path=public,auth
+as $
 declare v_admin boolean := public.vendaai_is_marketplace_admin();
 begin
   if v_admin then
