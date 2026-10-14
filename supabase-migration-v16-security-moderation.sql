@@ -14,7 +14,7 @@ returns trigger
 language plpgsql
 security definer
 set search_path=public,auth
-as $
+as $$
 declare v_admin boolean := public.vendaai_is_marketplace_admin();
 begin
   if v_admin then
