@@ -185,7 +185,11 @@ set search_path=public
 as $$
 declare v_seller uuid;
 begin
-  v_seller := coalesce(NEW.reviewed_user_id,OLD.reviewed_user_id);
+  if TG_OP='DELETE' then
+    v_seller := OLD.reviewed_user_id;
+  else
+    v_seller := NEW.reviewed_user_id;
+  end if;
   update marketplace_stores s
   set rating=coalesce((
     select avg(r.rating)::numeric(3,2)
@@ -193,7 +197,10 @@ begin
     where r.reviewed_user_id=v_seller and r.role='seller'
   ),0)
   where s.owner_id=v_seller;
-  return coalesce(NEW,OLD);
+  if TG_OP='DELETE' then
+    return OLD;
+  end if;
+  return NEW;
 end;
 $$;
 
